@@ -1,3 +1,4 @@
+import ai
 import engine
 import pygame as p
 
@@ -32,9 +33,16 @@ class Programme:
         # 4,4)
 
         self.move_made = False
-
         self.mousedown = ()
+        self.game_over = False
 
+        self.human_player_one = True
+        self.human_player_two = False
+        self.human_turn = None
+
+    def reset(self):
+        self.move_made = False
+        self.mousedown = ()
         self.game_over = False
 
     def get_pieces_images(self):
@@ -129,19 +137,15 @@ def manage_event(e, prog, gs):
         prog.running = False
     elif e.type == p.KEYDOWN:
         if e.key == p.K_r:
+            prog.reset()
             gs = engine.GameState()
-            gs.get_valid_moves()
-            prog.move_made = False
-            prog.mousedown = ()
-            prog.game_over = False
         elif e.key == p.K_u:
             gs.undo_move()
             prog.move_made = True
-            if prog.game_over:
-                prog.game_over = False
+            prog.game_over = False
 
     if not prog.game_over:
-        if e.type == p.MOUSEBUTTONDOWN:
+        if e.type == p.MOUSEBUTTONDOWN and prog.human_turn:
 
             location = p.mouse.get_pos()
 
@@ -150,7 +154,7 @@ def manage_event(e, prog, gs):
 
             prog.mousedown = (row, col)
 
-        elif e.type == p.MOUSEBUTTONUP:
+        elif e.type == p.MOUSEBUTTONUP and prog.human_turn:
             location = p.mouse.get_pos()
 
             col = location[0] // prog.sq_size
@@ -164,6 +168,7 @@ def manage_event(e, prog, gs):
                 if move == m:
                     gs.make_move(m)
                     prog.move_made = True
+                    break
 
             prog.mousedown = ()
 
@@ -176,12 +181,14 @@ def main():
     gs = engine.GameState()
 
     while prog.running:
+        prog.human_turn = (gs.white_move and prog.human_player_one) or \
+                          (not gs.white_move and prog.human_player_two)
+
         for e in p.event.get():
             manage_event(e, prog, gs)
 
-        if prog.move_made:
-            gs.get_valid_moves()
-            prog.move_made = False
+        if not prog.game_over and not prog.human_turn and not prog.move_made:
+            ai.make_ai_move(prog, gs)
 
         if not prog.game_over:
             draw_game_state(prog, gs, prog.mousedown)
@@ -189,12 +196,16 @@ def main():
             if prog.mousedown != ():
                 animate_move(gs, prog, prog.mousedown, p.mouse.get_pos())
 
+            if prog.move_made:
+                gs.get_valid_moves()
+                prog.move_made = False
+
         if gs.checkmate:
             prog.game_over = True
             draw_text(prog, '{} wins by checkmate!'.format('Black' if
                                                         gs.white_move else
                                                         'White'))
-        elif gs.statemate:
+        elif gs.stalemate:
             prog.game_over = True
             draw_text(prog, 'Stalemate!')
 
