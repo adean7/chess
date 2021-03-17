@@ -27,10 +27,18 @@ class GameState:
         self.castling_log = [self.castling.copy()]
 
         self.checkmate = False
-        self.statemate = False
+        self.stalemate = False
 
         self.get_valid_moves()
 
+    def __str__(self):
+        string = ''
+        for row in range(8):
+            for col in range(8):
+                string += self.board[row][col]
+                string += ''
+            string += '\n'
+        return string
 
     def make_move(self, move):
         self.board[move.start_row][move.start_col] = '--'
@@ -49,7 +57,7 @@ class GameState:
             self.board[move.start_row][move.end_col] = '--'
 
         if move.piece_moved[1] == 'p' and \
-                abs(move.start_row-move.end_row) == 2:
+                abs(move.start_row - move.end_row) == 2:
             self.enpassant = ((move.start_row + move.end_row)//2,
                               move.start_col)
         else:
@@ -137,9 +145,8 @@ class GameState:
             if self.checkmate:
                 self.checkmate = False
 
-            # TODO: sort this
-            #if self.stalemate:
-            #    self.stalemate = False
+            if self.stalemate:
+                self.stalemate = False
 
     def get_pins_and_checks(self):
         pins = []
@@ -238,7 +245,7 @@ class GameState:
                             self.valid_moves.remove(self.valid_moves[i])
             else:
                 # more than one checking piece means only king moving is valid
-                self.get_king_moves(king_row, king_col, moves)
+                self.get_king_moves(king_row, king_col, self.valid_moves)
         else:
             self.valid_moves = self.get_all_moves()
             self.get_castling_moves(self.valid_moves)
@@ -246,8 +253,11 @@ class GameState:
         self.enpassant = temp_enpassant
 
         if len(self.valid_moves) == 0:
-            self.checkmate = True
-            #self.stalemate TODO: sort this.
+            if self.in_check:
+                self.checkmate = True
+            else:
+                self.stalemate = True
+                # TODO: add in repetition.
 
     def get_all_moves(self):
         moves = []
