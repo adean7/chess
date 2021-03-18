@@ -36,7 +36,7 @@ class Programme:
         self.mousedown = ()
         self.game_over = False
 
-        self.human_player_one = True
+        self.human_player_one = False
         self.human_player_two = False
         self.human_turn = None
 
@@ -180,6 +180,8 @@ def main():
 
     gs = engine.GameState()
 
+    comp = ai.AI()
+
     while prog.running:
         prog.human_turn = (gs.white_move and prog.human_player_one) or \
                           (not gs.white_move and prog.human_player_two)
@@ -188,7 +190,7 @@ def main():
             manage_event(e, prog, gs)
 
         if not prog.game_over and not prog.human_turn and not prog.move_made:
-            ai.make_ai_move(prog, gs)
+            ai.make_ai_move(prog, gs, comp)
 
         if not prog.game_over:
             draw_game_state(prog, gs, prog.mousedown)
