@@ -5,7 +5,8 @@ import pygame as p
 
 class Programme:
     def __init__(self, colors=None,
-                 width=512, height=512, dimension=8, max_fps=30):
+                 width=512, height=512, dimension=8, max_fps=30,
+                 human_player_one=False, human_player_two=False):
         self.width = width
         self.height = height
         self.dimension = dimension
@@ -36,8 +37,8 @@ class Programme:
         self.mousedown = ()
         self.game_over = False
 
-        self.human_player_one = True
-        self.human_player_two = False
+        self.human_player_one = human_player_one
+        self.human_player_two = human_player_two
         self.human_turn = None
 
     def reset(self):
@@ -176,7 +177,8 @@ def manage_event(e, prog, gs):
 def main():
     p.init()
 
-    prog = Programme()
+    prog = Programme(human_player_one=True,
+                     human_player_two=False)
 
     gs = engine.GameState()
 

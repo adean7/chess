@@ -22,6 +22,7 @@ class GameState:
         self.checks = []
 
         self.enpassant = ()
+        self.enpassant_log = [self.enpassant]
 
         self.castling = {'bq': True, 'bk': True, 'wq': True, 'wk': True}
         self.castling_log = [self.castling.copy()]
@@ -62,6 +63,8 @@ class GameState:
                               move.start_col)
         else:
             self.enpassant = ()
+
+        self.enpassant_log.append(self.enpassant)
 
         # castling
         if move.piece_moved == 'wk':
@@ -122,7 +125,9 @@ class GameState:
             if move.is_enpassant:
                 self.board[move.end_row][move.end_col] = '--'
                 self.board[move.start_row][move.end_col] = move.piece_captured
-                self.enpassant = (move.end_row, move.end_col)
+
+            self.enpassant_log.pop()
+            self.enpassant = self.enpassant_log[-1]
 
             if move.piece_moved[1] == 'p' and abs(move.start_row -
                                                   move.end_row) == 2:
