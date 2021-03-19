@@ -55,6 +55,13 @@ class Programme:
             self.pieces_images[string] = p.transform.scale(p.image.load(
                 "images/" + string + ".png"), (self.sq_size, self.sq_size))
 
+    def draw_game_state(self, game_state):
+        self.draw_board()
+        self.highlight_squares_pre_move(game_state)
+        self.highlight_squares_post_move(game_state.move_log)
+        self.draw_pieces(game_state.board)
+        self.draw_move_log(game_state)
+
     def draw_board(self):
         colors = [p.Color(self.colors['board1']),
                   p.Color(self.colors['board2'])]
@@ -67,20 +74,10 @@ class Programme:
                                                        self.sq_size,
                                                        self.sq_size))
 
-    def draw_pieces(self, board):
-        for row in range(self.dimension):
-            for col in range(self.dimension):
-                piece = board[row][col]
-                if piece != "--":
-                    self.screen.blit(self.pieces_images[piece],
-                                     p.Rect(col * self.sq_size,
-                                            row * self.sq_size,
-                                            self.sq_size,
-                                            self.sq_size))
-
-    def highlight_squares_pre_move(self, game_state, square_selected):
-        if square_selected != ():
-            row, col = square_selected
+    def highlight_squares_pre_move(self, game_state):
+        if self.mousedown != ():
+            row = self.mousedown[0]
+            col = self.mousedown[1]
             if game_state.board[row][col][0] == ('w' if game_state.white_move
             else 'b'):
                 surface = p.Surface((self.sq_size, self.sq_size))
@@ -94,9 +91,9 @@ class Programme:
                         self.screen.blit(surface, (self.sq_size * move.end_col,
                                                 self.sq_size * move.end_row))
 
-    def highlight_squares_post_move(self, game_state):
-        if len(game_state.move_log) != 0:
-            move = game_state.move_log[-1]
+    def highlight_squares_post_move(self, move_log):
+        if len(move_log) != 0:
+            move = move_log[-1]
 
             surface = p.Surface((self.sq_size, self.sq_size))
             surface.set_alpha(100) # transparency value, 0->255 increasing
@@ -106,47 +103,55 @@ class Programme:
             self.screen.blit(surface, (move.end_col * self.sq_size,
                                        move.end_row * self.sq_size))
 
+    def draw_pieces(self, board):
+        for row in range(self.dimension):
+            for col in range(self.dimension):
+                piece = board[row][col]
+                if piece != "--":
+                    self.screen.blit(self.pieces_images[piece],
+                                     p.Rect(col * self.sq_size,
+                                            row * self.sq_size,
+                                            self.sq_size,
+                                            self.sq_size))
 
+    def draw_move_log(self, game_state):
+        pass
 
-def draw_game_state(prog, game_state, square_selected):
-    prog.draw_board()
-    prog.highlight_squares_pre_move(game_state, square_selected)
-    prog.highlight_squares_post_move(game_state)
-    prog.draw_pieces(game_state.board)
+    def draw_end_game_text(self, text):
+        font = p.font.SysFont(self.end_game_text_font, 32, True, False)
+        text_object = font.render(text, 0,
+                                  p.Color(self.colors['end_game_text']))
+        text_location = p.Rect(0, 0, self.width, self.height).move(
+            (self.width - text_object.get_width()) / 2,
+            (self.height - text_object.get_height()) / 2)
+        self.screen.blit(text_object, text_location)
 
+    def animate_move(self, game_state):
+        row = self.mousedown[0]
+        col = self.mousedown[1]
 
-def animate_move(game_state, prog, sq_selected, mouse_pos):
-    row = sq_selected[0]
-    col = sq_selected[1]
+        mouse_col, mouse_row = p.mouse.get_pos()
 
-    piece_selected = game_state.board[row][col]
+        piece_selected = game_state.board[row][col]
 
-    if piece_selected != '--':
-        if game_state.board[row][col][0] == ('w' if game_state.white_move
-        else 'b'):
-            color = p.Color(prog.colors['sq_selected'])
+        if piece_selected != '--':
+            if game_state.board[row][col][0] == ('w' if game_state.white_move
+            else 'b'):
+                color = p.Color(self.colors['sq_selected'])
 
-            start_square = p.Rect(col * prog.sq_size,
-                                  row * prog.sq_size,
-                                  prog.sq_size,
-                                  prog.sq_size)
+                start_square = p.Rect(col * self.sq_size,
+                                      row * self.sq_size,
+                                      self.sq_size,
+                                      self.sq_size)
 
-            p.draw.rect(prog.screen, color, start_square)
+                p.draw.rect(self.screen, color, start_square)
 
-            prog.screen.blit(prog.pieces_images[piece_selected],
-                             p.Rect(mouse_pos[0] - prog.sq_size//2,
-                                    mouse_pos[1] - prog.sq_size//2,
-                                    prog.sq_size,
-                                    prog.sq_size))
-    p.display.flip()
-
-def draw_end_game_text(prog, text):
-    font = p.font.SysFont(prog.end_game_text_font, 32, True, False)
-    text_object = font.render(text, 0, p.Color(prog.colors['end_game_text']))
-    text_location = p.Rect(0, 0, prog.width, prog.height).move(
-        (prog.width  - text_object.get_width())  / 2,
-        (prog.height - text_object.get_height()) / 2)
-    prog.screen.blit(text_object, text_location)
+                self.screen.blit(self.pieces_images[piece_selected],
+                                 p.Rect(mouse_col - self.sq_size//2,
+                                        mouse_row - self.sq_size//2,
+                                        self.sq_size,
+                                        self.sq_size))
+        p.display.flip()
 
 
 
@@ -195,7 +200,7 @@ def main():
     p.init()
 
     prog = Programme(human_player_one=True,
-                     human_player_two=False)
+                     human_player_two=True)
 
     gs = engine.GameState()
 
@@ -215,10 +220,10 @@ def main():
             ai.make_ai_move(prog, gs, comp)
 
         if not prog.game_over:
-            draw_game_state(prog, gs, prog.mousedown)
+            prog.draw_game_state(gs)
 
             if prog.mousedown != ():
-                animate_move(gs, prog, prog.mousedown, p.mouse.get_pos())
+                prog.animate_move(gs)
 
             if prog.move_made:
                 gs.get_valid_moves()
@@ -226,13 +231,12 @@ def main():
 
         if gs.checkmate:
             prog.game_over = True
-            draw_end_game_text(prog,
-                               '{} wins by checkmate!'.format('Black' if
-                                                              gs.white_move
-                                                              else 'White'))
+            prog.draw_end_game_text(
+                '{} wins by checkmate!'.format('Black' if gs.white_move
+                                               else 'White'))
         elif gs.stalemate:
             prog.game_over = True
-            draw_end_game_text(prog, 'Stalemate!')
+            prog.draw_end_game_text('Stalemate!')
 
         prog.clock.tick(prog.max_fps)
 
