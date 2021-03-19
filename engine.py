@@ -22,6 +22,7 @@ class GameState:
         self.checks = []
 
         self.enpassant = ()
+        self.enpassant_log = [self.enpassant]
 
         self.castling = {'bq': True, 'bk': True, 'wq': True, 'wk': True}
         self.castling_log = [self.castling.copy()]
@@ -62,6 +63,8 @@ class GameState:
                               move.start_col)
         else:
             self.enpassant = ()
+
+        self.enpassant_log.append(self.enpassant)
 
         # castling
         if move.piece_moved == 'wk':
@@ -122,7 +125,9 @@ class GameState:
             if move.is_enpassant:
                 self.board[move.end_row][move.end_col] = '--'
                 self.board[move.start_row][move.end_col] = move.piece_captured
-                self.enpassant = (move.end_row, move.end_col)
+
+            self.enpassant_log.pop()
+            self.enpassant = self.enpassant_log[-1]
 
             if move.piece_moved[1] == 'p' and abs(move.start_row -
                                                   move.end_row) == 2:
@@ -142,11 +147,8 @@ class GameState:
             self.castling_log.pop()
             self.castling = self.castling_log[-1].copy()
 
-            if self.checkmate:
-                self.checkmate = False
-
-            if self.stalemate:
-                self.stalemate = False
+            self.checkmate = False
+            self.stalemate = False
 
     def get_pins_and_checks(self):
         pins = []
@@ -210,10 +212,10 @@ class GameState:
 
         return in_check, pins, checks
 
-    def get_valid_moves(self):
+    def get_valid_moves(self, return_moves=False):
         temp_enpassant = self.enpassant
 
-        self.valid_moves = [] #self.get_all_moves()
+        moves = [] #self.get_all_moves()
 
         self.in_check, self.pins, self.checks = self.get_pins_and_checks()
 
@@ -222,7 +224,7 @@ class GameState:
 
         if self.in_check:
             if len(self.checks) == 1:
-                self.valid_moves = self.get_all_moves()
+                moves = self.get_all_moves()
                 check = self.checks[0]
                 check_row, check_col = check[0], check[1]
                 piece_checking = self.board[check_row][check_col]
@@ -238,26 +240,31 @@ class GameState:
                         if valid_square[0] == check_row and \
                             valid_square[1] == check_col:
                             break
-                for i in range(len(self.valid_moves)-1, -1, -1):
-                    if self.valid_moves[i].piece_moved[1] != 'k':
-                        if not (self.valid_moves[i].end_row,
-                                self.valid_moves[i].end_col) in valid_squares:
-                            self.valid_moves.remove(self.valid_moves[i])
+                for i in range(len(moves)-1, -1, -1):
+                    if moves[i].piece_moved[1] != 'k':
+                        if not (moves[i].end_row,
+                                moves[i].end_col) in valid_squares:
+                            moves.remove(moves[i])
             else:
                 # more than one checking piece means only king moving is valid
-                self.get_king_moves(king_row, king_col, self.valid_moves)
+                self.get_king_moves(king_row, king_col, moves)
         else:
-            self.valid_moves = self.get_all_moves()
-            self.get_castling_moves(self.valid_moves)
+            moves = self.get_all_moves()
+            self.get_castling_moves(moves)
 
         self.enpassant = temp_enpassant
 
-        if len(self.valid_moves) == 0:
+        if len(moves) == 0:
             if self.in_check:
                 self.checkmate = True
             else:
                 self.stalemate = True
                 # TODO: add in repetition.
+
+        if return_moves is False:
+            self.valid_moves = moves
+        else:
+            return moves
 
     def get_all_moves(self):
         moves = []

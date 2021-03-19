@@ -5,7 +5,8 @@ import pygame as p
 
 class Programme:
     def __init__(self, colors=None,
-                 width=512, height=512, dimension=8, max_fps=30):
+                 width=512, height=512, dimension=8, max_fps=30,
+                 human_player_one=False, human_player_two=False):
         self.width = width
         self.height = height
         self.dimension = dimension
@@ -18,6 +19,7 @@ class Programme:
              'board2': 'gray',
              'sq_selected': 'purple',
              'valid_moves': 'yellow',
+             'post_move': 'red',
              'end_game_text': 'black'}
 
         self.screen = p.display.set_mode((self.width, self.height))
@@ -36,8 +38,8 @@ class Programme:
         self.mousedown = ()
         self.game_over = False
 
-        self.human_player_one = True
-        self.human_player_two = False
+        self.human_player_one = human_player_one
+        self.human_player_two = human_player_two
         self.human_turn = None
 
     def reset(self):
@@ -74,7 +76,7 @@ class Programme:
                                             self.sq_size,
                                             self.sq_size))
 
-    def highlight_squares(self, game_state, square_selected):
+    def highlight_squares_pre_move(self, game_state, square_selected):
         if square_selected != ():
             row, col = square_selected
             if game_state.board[row][col][0] == ('w' if game_state.white_move
@@ -90,12 +92,26 @@ class Programme:
                         self.screen.blit(surface, (self.sq_size * move.end_col,
                                                 self.sq_size * move.end_row))
 
+    def highlight_squares_post_move(self, game_state):
+        if len(game_state.move_log) != 0:
+            move = game_state.move_log[-1]
+
+            surface = p.Surface((self.sq_size, self.sq_size))
+            surface.set_alpha(100) # transparency value, 0->255 increasing
+            surface.fill(p.Color(self.colors['post_move']))
+            self.screen.blit(surface, (move.start_col * self.sq_size,
+                                       move.start_row * self.sq_size))
+            self.screen.blit(surface, (move.end_col * self.sq_size,
+                                       move.end_row * self.sq_size))
+
 
 
 def draw_game_state(prog, game_state, square_selected):
     prog.draw_board()
-    prog.highlight_squares(game_state, square_selected)
+    prog.highlight_squares_pre_move(game_state, square_selected)
+    prog.highlight_squares_post_move(game_state)
     prog.draw_pieces(game_state.board)
+
 
 def animate_move(game_state, prog, sq_selected, mouse_pos):
     row = sq_selected[0]
@@ -176,9 +192,12 @@ def manage_event(e, prog, gs):
 def main():
     p.init()
 
-    prog = Programme()
+    prog = Programme(human_player_one=True,
+                     human_player_two=False)
 
     gs = engine.GameState()
+
+    comp = ai.AI()
 
     while prog.running:
         prog.human_turn = (gs.white_move and prog.human_player_one) or \
@@ -188,7 +207,7 @@ def main():
             manage_event(e, prog, gs)
 
         if not prog.game_over and not prog.human_turn and not prog.move_made:
-            ai.make_ai_move(prog, gs)
+            ai.make_ai_move(prog, gs, comp)
 
         if not prog.game_over:
             draw_game_state(prog, gs, prog.mousedown)
