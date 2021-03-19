@@ -19,6 +19,7 @@ class Programme:
              'board2': 'gray',
              'sq_selected': 'purple',
              'valid_moves': 'yellow',
+             'post_move': 'red',
              'end_game_text': 'black'}
 
         self.screen = p.display.set_mode((self.width, self.height))
@@ -75,7 +76,7 @@ class Programme:
                                             self.sq_size,
                                             self.sq_size))
 
-    def highlight_squares(self, game_state, square_selected):
+    def highlight_squares_pre_move(self, game_state, square_selected):
         if square_selected != ():
             row, col = square_selected
             if game_state.board[row][col][0] == ('w' if game_state.white_move
@@ -91,12 +92,26 @@ class Programme:
                         self.screen.blit(surface, (self.sq_size * move.end_col,
                                                 self.sq_size * move.end_row))
 
+    def highlight_squares_post_move(self, game_state):
+        if len(game_state.move_log) != 0:
+            move = game_state.move_log[-1]
+
+            surface = p.Surface((self.sq_size, self.sq_size))
+            surface.set_alpha(100) # transparency value, 0->255 increasing
+            surface.fill(p.Color(self.colors['post_move']))
+            self.screen.blit(surface, (move.start_col * self.sq_size,
+                                       move.start_row * self.sq_size))
+            self.screen.blit(surface, (move.end_col * self.sq_size,
+                                       move.end_row * self.sq_size))
+
 
 
 def draw_game_state(prog, game_state, square_selected):
     prog.draw_board()
-    prog.highlight_squares(game_state, square_selected)
+    prog.highlight_squares_pre_move(game_state, square_selected)
+    prog.highlight_squares_post_move(game_state)
     prog.draw_pieces(game_state.board)
+
 
 def animate_move(game_state, prog, sq_selected, mouse_pos):
     row = sq_selected[0]
