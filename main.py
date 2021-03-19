@@ -15,26 +15,26 @@ class Programme:
         self.clock = p.time.Clock()
 
         self.colors = colors if colors is not None else \
-            {'board1': 'white',
-             'board2': 'gray',
-             'sq_selected': 'purple',
-             'valid_moves': 'yellow',
-             'post_move': 'red',
-             'end_game_text': 'black'}
+            {'fill'         : p.Color('white'),
+             'board1'       : p.Color('white'),
+             'board2'       : p.Color('gray'),
+             'sq_selected'  : p.Color('purple'),
+             'valid_moves'  : p.Color('yellow'),
+             'post_move'    : p.Color('red'),
+             'end_game_text': p.Color('black')}
 
-        self.end_game_text_font = 'Helvetica'
+        self.fonts = {'move_log': p.font.SysFont('Verdana', size=18,
+                                                 bold=False, italic=False),
+
+                      'end_game': p.font.SysFont('Verdana', size=32,
+                                                 bold=True,  italic=False)}
 
         self.screen = p.display.set_mode((self.width, self.height))
-        self.screen.fill(p.Color('white'))
+        self.screen.fill(self.colors['fill'])
 
-        self.pieces = ['wk', 'wq', 'wr', 'wb', 'wn', 'wp', 'bk', 'bq', 'br',
-                       'bb', 'bn', 'bp']
+        self.pieces = ['wk', 'wq', 'wr', 'wb', 'wn', 'wp',
+                       'bk', 'bq', 'br', 'bb', 'bn', 'bp']
         self.get_pieces_images()
-
-        self.running = True
-        # self.sq_selected = () # (row, column)
-        # self.player_clicks = [] # e.g. [(6,4), (4,4)] moving from (6,4) to (
-        # 4,4)
 
         self.move_made = False
         self.mousedown = ()
@@ -43,6 +43,8 @@ class Programme:
         self.human_player_one = human_player_one
         self.human_player_two = human_player_two
         self.human_turn = None
+
+        self.running = True
 
     def reset(self):
         self.move_made = False
@@ -63,8 +65,8 @@ class Programme:
         self.draw_move_log(game_state)
 
     def draw_board(self):
-        colors = [p.Color(self.colors['board1']),
-                  p.Color(self.colors['board2'])]
+        colors = [self.colors['board1'],
+                  self.colors['board2']]
 
         for row in range(self.dimension):
             for col in range(self.dimension):
@@ -82,10 +84,10 @@ class Programme:
             else 'b'):
                 surface = p.Surface((self.sq_size, self.sq_size))
                 surface.set_alpha(100) # transparency value, 0->255 increasing
-                surface.fill(p.Color(self.colors['sq_selected']))
+                surface.fill(self.colors['sq_selected'])
                 self.screen.blit(surface, (col * self.sq_size,
                                            row * self.sq_size))
-                surface.fill(p.Color(self.colors['valid_moves']))
+                surface.fill(self.colors['valid_moves'])
                 for move in game_state.valid_moves:
                     if move.start_row == row and move.start_col == col:
                         self.screen.blit(surface, (self.sq_size * move.end_col,
@@ -97,7 +99,7 @@ class Programme:
 
             surface = p.Surface((self.sq_size, self.sq_size))
             surface.set_alpha(100) # transparency value, 0->255 increasing
-            surface.fill(p.Color(self.colors['post_move']))
+            surface.fill(self.colors['post_move'])
             self.screen.blit(surface, (move.start_col * self.sq_size,
                                        move.start_row * self.sq_size))
             self.screen.blit(surface, (move.end_col * self.sq_size,
@@ -118,9 +120,8 @@ class Programme:
         pass
 
     def draw_end_game_text(self, text):
-        font = p.font.SysFont(self.end_game_text_font, 32, True, False)
-        text_object = font.render(text, 0,
-                                  p.Color(self.colors['end_game_text']))
+        text_object = self.fonts['end_game'].render(text, 0, self.colors[
+            'end_game_text'])
         text_location = p.Rect(0, 0, self.width, self.height).move(
             (self.width - text_object.get_width()) / 2,
             (self.height - text_object.get_height()) / 2)
@@ -137,14 +138,14 @@ class Programme:
         if piece_selected != '--':
             if game_state.board[row][col][0] == ('w' if game_state.white_move
             else 'b'):
-                color = p.Color(self.colors['sq_selected'])
 
                 start_square = p.Rect(col * self.sq_size,
                                       row * self.sq_size,
                                       self.sq_size,
                                       self.sq_size)
 
-                p.draw.rect(self.screen, color, start_square)
+                p.draw.rect(self.screen, self.colors['sq_selected'],
+                            start_square)
 
                 self.screen.blit(self.pieces_images[piece_selected],
                                  p.Rect(mouse_col - self.sq_size//2,
