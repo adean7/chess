@@ -36,7 +36,7 @@ class Programme:
         self.mousedown = ()
         self.game_over = False
 
-        self.human_player_one = False
+        self.human_player_one = True
         self.human_player_two = False
         self.human_turn = None
 
