@@ -22,6 +22,8 @@ class Programme:
              'post_move': 'red',
              'end_game_text': 'black'}
 
+        self.end_game_text_font = 'Helvetica'
+
         self.screen = p.display.set_mode((self.width, self.height))
         self.screen.fill(p.Color('white'))
 
@@ -138,12 +140,12 @@ def animate_move(game_state, prog, sq_selected, mouse_pos):
                                     prog.sq_size))
     p.display.flip()
 
-def draw_text(prog, text):
-    font = p.font.SysFont("Helvetica", 32, True, False)
+def draw_end_game_text(prog, text):
+    font = p.font.SysFont(prog.end_game_text_font, 32, True, False)
     text_object = font.render(text, 0, p.Color(prog.colors['end_game_text']))
     text_location = p.Rect(0, 0, prog.width, prog.height).move(
-        (prog.width  - text_object.get_width()) /2,
-        (prog.height - text_object.get_height())/2)
+        (prog.width  - text_object.get_width())  / 2,
+        (prog.height - text_object.get_height()) / 2)
     prog.screen.blit(text_object, text_location)
 
 
@@ -154,7 +156,7 @@ def manage_event(e, prog, gs):
     elif e.type == p.KEYDOWN:
         if e.key == p.K_r:
             prog.reset()
-            gs = engine.GameState()
+            # game_state reset is done in the main function
         elif e.key == p.K_u:
             gs.undo_move()
             prog.move_made = True
@@ -205,6 +207,9 @@ def main():
 
         for e in p.event.get():
             manage_event(e, prog, gs)
+            # check for game reset here because code is a bit ugly :/
+            if e.type == p.KEYDOWN and e.key == p.K_r:
+                gs = engine.GameState()
 
         if not prog.game_over and not prog.human_turn and not prog.move_made:
             ai.make_ai_move(prog, gs, comp)
@@ -221,12 +226,13 @@ def main():
 
         if gs.checkmate:
             prog.game_over = True
-            draw_text(prog, '{} wins by checkmate!'.format('Black' if
-                                                        gs.white_move else
-                                                        'White'))
+            draw_end_game_text(prog,
+                               '{} wins by checkmate!'.format('Black' if
+                                                              gs.white_move
+                                                              else 'White'))
         elif gs.stalemate:
             prog.game_over = True
-            draw_text(prog, 'Stalemate!')
+            draw_end_game_text(prog, 'Stalemate!')
 
         prog.clock.tick(prog.max_fps)
 
