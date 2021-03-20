@@ -204,15 +204,13 @@ class Programme:
         #p.display.update(rect)
         p.display.flip()
 
-    def try_to_select_piece(self, game_state):
+    def try_to_hold_piece(self, game_state):
         piece = game_state.board[self.mousedown.row][self.mousedown.col]
 
         if piece[0] == ('w' if game_state.white_move else 'b'):
             self.piece_held = piece
             self.piece_held_origin = (self.mousedown.row,
                                       self.mousedown.col)
-        else:
-            self.mousedown = None
 
     def get_mouse_click(self, pos):
         x, y = pos
@@ -221,6 +219,8 @@ class Programme:
         row = y // self.sq_size
 
         return Click(x, y, row, col)
+
+
 
 class Click:
     def __init__(self, x, y, row, col):
@@ -235,24 +235,31 @@ class Click:
         return True if (self.row == other.row and self.col == other.col) \
             else False
 
+
+
 def manage_event(e, prog, gs):
     # we click the mouse
     if e.type == p.MOUSEBUTTONDOWN:
         prog.mousedown = prog.get_mouse_click(p.mouse.get_pos())
 
         if prog.mousedown.on_the_board:
-            prog.try_to_select_piece(gs)
+            prog.try_to_hold_piece(gs)
 
     elif e.type == p.MOUSEBUTTONUP:
         if prog.mousedown is not None:
             prog.mouseup = prog.get_mouse_click(p.mouse.get_pos())
 
-            if prog.piece_held is not None and prog.mouseup.on_the_board:
-                #if same square then highlight that pieces moves
-                if prog.mousedown == prog.mouseup:
+            if prog.mouseup.on_the_board:
+                # if same square then highlight that pieces moves
+                if prog.mouseup == prog.mousedown and prog.piece_selected is\
+                        None:
                     prog.piece_selected = prog.piece_held
                     prog.piece_selected_square = prog.piece_held_origin
-                else:
+
+                    prog.piece_held = None
+                    prog.piece_held_origin = ()
+
+                elif prog.piece_held is not None:
                     move = engine.Move(prog.piece_held_origin,
                                        (prog.mouseup.row, prog.mouseup.col),
                                        gs.board)
@@ -263,10 +270,27 @@ def manage_event(e, prog, gs):
                             prog.move_made = True
                             break
 
-                prog.piece_held = None
-                prog.piece_held_origin = ()
+                    prog.piece_selected = prog.piece_held
+                    prog.piece_selected_square = prog.piece_held_origin
 
-                if prog.move_made:
+                    prog.piece_held = None
+                    prog.piece_held_origin = ()
+
+                elif prog.piece_selected is not None:
+                    # try to make move to a valid square, other just
+                    # unselect the piece
+                    move = engine.Move(prog.piece_selected_square,
+                                       (prog.mouseup.row, prog.mouseup.col),
+                                       gs.board)
+
+                    for m in gs.valid_moves:
+                        if move == m:
+                            gs.make_move(m)
+                            prog.move_made = True
+                            break
+
+                    prog.piece_held = None
+                    prog.piece_held_origin = ()
                     prog.piece_selected = None
                     prog.piece_selected_square = ()
 
@@ -301,7 +325,6 @@ def main():
 
     comp = ai.AI()
 
-    num=0
     while prog.running:
         prog.human_turn = (gs.white_move and prog.human_player_one) or \
                           (not gs.white_move and prog.human_player_two)
@@ -349,7 +372,5 @@ def main():
 
 
 
-
 if __name__ == '__main__':
     main()
-
