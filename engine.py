@@ -13,6 +13,7 @@ class GameState:
 
         self.white_move = True
         self.move_log = []
+        self.valid_move_log = []
 
         self.white_king = (7, 4)
         self.black_king = (0, 4)
@@ -41,7 +42,10 @@ class GameState:
             string += '\n'
         return string
 
-    def make_move(self, move):
+    def make_move(self, move, quick=False):
+        if not quick:
+            move.get_extra_info()
+
         self.board[move.start_row][move.start_col] = '--'
         self.board[move.end_row][move.end_col] = move.piece_moved
         self.move_log.append(move)
@@ -111,6 +115,12 @@ class GameState:
 
         self.castling_log.append(self.castling.copy())
 
+        self.get_valid_moves()
+
+        move.is_check = self.in_check
+        move.is_checkmate = self.checkmate
+        move.is_stalemate = self.stalemate
+
     def undo_move(self):
         if len(self.move_log) != 0:
             move = self.move_log.pop()
@@ -150,6 +160,10 @@ class GameState:
             self.checkmate = False
             self.stalemate = False
 
+            #self.get_valid_moves()
+            self.valid_move_log.pop()
+            self.valid_moves = self.valid_move_log[-1]
+
     def get_pins_and_checks(self):
         pins = []
         checks = []
@@ -188,7 +202,7 @@ class GameState:
                             # no piece blocking so check
                             if possible_pin == ():
                                 in_check = True
-                                checks.append((end_row,end_col, d[0], d[1]))
+                                checks.append((end_row, end_col, d[0], d[1]))
                                 break
                             # piece blocking so pin
                             else:
@@ -262,6 +276,7 @@ class GameState:
                 # TODO: add in repetition.
 
         if return_moves is False:
+            self.valid_move_log.append(moves)
             self.valid_moves = moves
         else:
             return moves
@@ -527,30 +542,25 @@ class GameState:
 
 
 class Move:
-    ranks_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4,
-                     '5': 3, '6': 2, '7': 1, '8': 0}
-    rows_to_ranks = {v: k for k, v in ranks_to_rows.items()}
-
-    files_to_cols = {'a': 0, 'b': 1, 'c': 2, 'd': 3,
-                     'e': 4, 'f': 5, 'g': 6, 'h': 7}
-    cols_to_files = {v: k for k, v in files_to_cols.items()}
-
     def __init__(self, start_sq, end_sq, board,
                  pawn_promotion=False, enpassant=False, castling=False):
         self.start_row, self.start_col = start_sq
         self.end_row, self.end_col = end_sq
+
         self.piece_moved = board[self.start_row][self.start_col]
         self.piece_captured = board[self.end_row][self.end_col]
+
         self.is_pawn_promotion = pawn_promotion #self.check_pawn_promotion()
         self.is_enpassant = enpassant #self.check_enpassant(possible_enpassant)
         self.is_castling = castling
+
+        if self.is_enpassant:
+            self.piece_captured = 'wp' if self.piece_moved == 'bp' else 'bp'
+
         self.move_id = str(self.start_row) + \
             str(self.start_col) + \
             str(self.end_row) + \
             str(self.end_col)
-
-        if self.is_enpassant:
-            self.piece_captured = 'wp' if self.piece_moved == 'bp' else 'bp'
 
     def __eq__(self, other):
         if isinstance(other, Move):
@@ -558,18 +568,58 @@ class Move:
 
         return False
 
-    '''
-    def check_pawn_promotion(self):
-        return True if ((self.piece_moved == 'wp' and self.end_row == 0) or (
-                self.piece_moved == 'bp' and self.end_row == 7)) else False
+    def __str__(self):
+        if self.is_castling:
+            return "O-O" if self.end_col == 6 else "O-O-O"
 
-    def check_enpassant(self, possible_enpassant):
-        return True if (self.piece_moved[1] == 'p' and (self.end_row,
-                                                       self.end_col) ==
-                possible_enpassant) else False
-    '''
+        end_square = self.get_rank_file(self.end_row, self.end_col)
 
-    def get_chess_notation(self):
+        # TODO:
+        # add in pawn promotion
+        # add in check if there are ambiguities between which piece was moved
+        # add in checks (+)
+        # add in checkmate (#)
+        # add in stalemate
+        # add in endgame result i.e 1-0 0-1
+
+        if self.piece_moved[1] == 'p':
+            if self.is_capture:
+                return self.cols_to_files[self.start_col] + 'x' + end_square
+            else:
+                return end_square
+
+        move_string = self.piece_moved[1].capitalize()
+
+        if self.is_capture:
+            move_string += 'x'
+
+        move_string += end_square
+
+        if self.is_checkmate:
+            move_string += '#'
+        elif self.is_check:
+            move_string += '+'
+
+        return move_string
+
+    def get_extra_info(self):
+        self.is_capture = self.piece_captured != '--'
+        self.is_check = None
+        self.is_checkmate = None
+        self.is_stalemate = None
+
+        self.ranks_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4,
+                              '5': 3, '6': 2, '7': 1, '8': 0}
+        self.rows_to_ranks = {v: k for k, v in self.ranks_to_rows.items()}
+
+        self.files_to_cols = {'a': 0, 'b': 1, 'c': 2, 'd': 3,
+                              'e': 4, 'f': 5, 'g': 6, 'h': 7}
+        self.cols_to_files = {v: k for k, v in self.files_to_cols.items()}
+
+        self.simple_notation = self.get_simple_notation()
+        self.chess_notation = self.__str__()
+
+    def get_simple_notation(self):
         return self.get_rank_file(self.start_row, self.start_col) + \
                self.get_rank_file(self.end_row, self.end_col)
 
