@@ -54,11 +54,12 @@ def find_move_nega_max_a_b(game_state, valid_moves, comp, current_depth,
     max_score = -1 * comp.checkmate
 
     for move in shuffled_moves:
-        game_state.make_move(move)
+        game_state.make_move(move, quick=True)
 
-        next_moves = game_state.get_valid_moves(return_moves=True)
+        #next_moves = game_state.get_valid_moves(return_moves=True)
 
-        score = -1 * find_move_nega_max_a_b(game_state, next_moves, comp,
+        score = -1 * find_move_nega_max_a_b(game_state,
+                                            game_state.valid_moves, comp,
                                             current_depth - 1,
                                             -beta, -alpha,
                                             -1 * turn_multiplier)
@@ -105,12 +106,12 @@ def find_move_nega_max(game_state, valid_moves, comp, current_depth,
     max_score = -1 * comp.checkmate
 
     for move in shuffled_moves:
-        game_state.make_move(move)
+        game_state.make_move(move, quick=True)
 
-        next_moves = game_state.get_valid_moves(return_moves=True)
+        #next_moves = game_state.get_valid_moves(return_moves=True)
 
-        score = -1 * find_move_nega_max(game_state, next_moves, comp,
-                                        current_depth - 1,
+        score = -1 * find_move_nega_max(game_state, game_state.valid_moves,
+                                        comp, current_depth - 1,
                                         -1 * turn_multiplier)
 
         if score > max_score:
