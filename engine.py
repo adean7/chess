@@ -1,3 +1,4 @@
+import time
 
 
 class GameState:
@@ -33,6 +34,10 @@ class GameState:
 
         self.get_valid_moves()
 
+        self.white_timer = 0
+        self.black_timer = 0
+        self.move_time = time.time()
+
     def __str__(self):
         string = ''
         for row in range(8):
@@ -45,6 +50,12 @@ class GameState:
     def make_move(self, move, quick=False):
         if not quick:
             move.get_extra_info()
+
+        if self.white_move:
+            self.white_timer += time.time() - self.move_time
+        else:
+            self.black_timer += time.time() - self.move_time
+        self.move_time = time.time()
 
         self.board[move.start_row][move.start_col] = '--'
         self.board[move.end_row][move.end_col] = move.piece_moved
