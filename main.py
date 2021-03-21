@@ -2,6 +2,8 @@ import ai
 import engine
 import pygame as p
 
+#from multiprocessing import Process
+
 
 class Programme:
     def __init__(self, colors=None,
@@ -17,9 +19,6 @@ class Programme:
 
         self.undo_moves = undo_moves
 
-        self.width_move_log = width_board // 2
-        self.height_move_log = self.height_board
-
         self.colors = colors if colors is not None else \
             {'fill'         : p.Color('white'),
              'board1'       : p.Color(255, 204, 255),
@@ -29,13 +28,25 @@ class Programme:
              'post_move'    : p.Color('red'),
              'move_log_bar' : p.Color(50, 50, 50),
              'move_log_text': p.Color('white'),
-             'end_game_text': p.Color('black')}
+             'end_game_text': p.Color('black'),
+             'result'       : p.Color('white')}
 
         self.fonts = {'move_log_text': p.font.SysFont('sfnsmono', size=16,
                                                  bold=False, italic=False),
 
                       'end_game'     : p.font.SysFont('Verdana', size=32,
-                                                 bold=True,  italic=False)}
+                                                 bold=True,  italic=False),
+
+                      'result'       : p.font.SysFont('Verdana', size=32,
+                                                      bold=True, italic=False)}
+
+        self.width_move_log = width_board // 2
+        self.height_move_log = self.height_board
+        self.move_log_padding = 5
+        self.move_log_line_spacing = 2
+        self.move_love_text_object_height = self.fonts['move_log_text'].render(
+                'O-O-O', 0, self.colors['move_log_text']).get_height()
+        self.num_recent_moves = 8
 
         self.screen = p.display.set_mode((self.width_board +
                                           self.width_move_log,
@@ -83,7 +94,7 @@ class Programme:
         self.highlight_squares_pre_move(game_state)
         self.highlight_squares_post_move(game_state.move_log)
         self.draw_pieces(game_state.board)
-        self.draw_move_log(game_state)
+        self.draw_move_log(game_state.move_log)
 
     def draw_board(self):
         colors = [self.colors['board1'],
@@ -146,43 +157,56 @@ class Programme:
                                             self.sq_size,
                                             self.sq_size))
 
-    def draw_move_log(self, game_state):
+    def draw_move_log(self, move_log):
         rect = p.Rect(self.width_board,    0,
                       self.width_move_log, self.height_board)
 
         p.draw.rect(self.screen, self.colors['move_log_bar'], rect)
 
-        line_spacing = 2
-        padding = 5
-        text_y = padding
+        text_y = self.move_log_padding
 
-        recent_8_moves = game_state.move_log[-16+len(game_state.move_log)%2:]
-        starting_num = max(0, len(game_state.move_log) - len(recent_8_moves))
+        recent_moves = move_log[-(2*self.num_recent_moves)+len(move_log)%2:]
+        starting_num = max(0, len(move_log) - len(recent_moves))
 
-        for move_num in range(0, len(recent_8_moves), 2):
+        for move_num in range(0, len(recent_moves), 2):
             string = '{:>3d}. {:>7s} {:>7s}'.format(
                 1 + ((move_num + starting_num) // 2),
-                str(recent_8_moves[move_num]),
-                str(recent_8_moves[move_num+1]) \
-                    if move_num+1 < len(recent_8_moves) else '')
+                str(recent_moves[move_num]),
+                str(recent_moves[move_num+1]) \
+                    if move_num+1 < len(recent_moves) else '')
             text_object = self.fonts['move_log_text'].render(
                 string, 0, self.colors['move_log_text'])
 
-            text_location = rect.move(padding, text_y)
+            text_location = rect.move(self.move_log_padding, text_y)
             self.screen.blit(text_object, text_location)
 
-            text_y += text_object.get_height() + line_spacing
+            text_y += text_object.get_height() + self.move_log_line_spacing
 
     def draw_end_game_text(self, text):
         text_object = self.fonts['end_game'].render(text, 0, self.colors[
             'end_game_text'])
+
         text_location = p.Rect(0, 0, self.width_board, self.height_board).move(
             (self.width_board - text_object.get_width()) / 2,
             (self.height_board - text_object.get_height()) / 2)
+
         self.screen.blit(text_object, text_location)
 
-    def animate_move(self, game_state):
-        if self.piece_held[0] == ('w' if game_state.white_move else 'b'):
+    def draw_result(self, text):
+        text_object = self.fonts['result'].render(text, 0,
+                                                  self.colors['result'])
+
+        text_location = p.Rect(self.width_board, 0,
+                               self.width_move_log, self.height_move_log).move(
+            (self.width_move_log - text_object.get_width()) / 2,
+            (self.move_love_text_object_height + self.move_log_line_spacing) *
+            self.num_recent_moves + 10)
+
+        self.screen.blit(text_object, text_location)
+
+
+    def animate_move(self, white_move):
+        if self.piece_held[0] == ('w' if white_move else 'b'):
             mouse_col, mouse_row = p.mouse.get_pos()
 
             start_square = p.Rect(self.piece_held_origin[1] * self.sq_size,
@@ -220,6 +244,13 @@ class Programme:
 
         return Click(x, y, row, col)
 
+    def attempt_move(self, move, game_state):
+        for m in game_state.valid_moves:
+            if move == m:
+                game_state.make_move(m)
+                self.move_made = True
+                break
+
 
 
 class Click:
@@ -256,25 +287,15 @@ def manage_event(e, prog, gs):
                     prog.piece_selected = prog.piece_held
                     prog.piece_selected_square = prog.piece_held_origin
 
-                    prog.piece_held = None
-                    prog.piece_held_origin = ()
-
                 elif prog.piece_held is not None:
                     move = engine.Move(prog.piece_held_origin,
                                        (prog.mouseup.row, prog.mouseup.col),
                                        gs.board)
 
-                    for m in gs.valid_moves:
-                        if move == m:
-                            gs.make_move(m)
-                            prog.move_made = True
-                            break
+                    prog.attempt_move(move, gs)
 
                     prog.piece_selected = prog.piece_held
                     prog.piece_selected_square = prog.piece_held_origin
-
-                    prog.piece_held = None
-                    prog.piece_held_origin = ()
 
                 elif prog.piece_selected is not None:
                     # try to make move to a valid square, other just
@@ -283,24 +304,24 @@ def manage_event(e, prog, gs):
                                        (prog.mouseup.row, prog.mouseup.col),
                                        gs.board)
 
-                    for m in gs.valid_moves:
-                        if move == m:
-                            gs.make_move(m)
-                            prog.move_made = True
-                            break
+                    prog.attempt_move(move, gs)
 
-                    prog.piece_held = None
-                    prog.piece_held_origin = ()
                     prog.piece_selected = None
                     prog.piece_selected_square = ()
+
+            prog.piece_held = None
+            prog.piece_held_origin = ()
 
             prog.mousedown = None
             prog.mouseup = None
 
     elif e.type == p.KEYDOWN:
         if e.key == p.K_ESCAPE:
-            if prog.mousedown != ():
-                prog.mousedown = ()
+            prog.mousedown = None
+            prog.piece_held = None
+            prog.piece_held_origin = ()
+            prog.piece_selected = None
+            prog.piece_selected_square = ()
 
         elif e.key == p.K_r:
             prog.reset()
@@ -319,7 +340,8 @@ def main():
     p.init()
 
     prog = Programme(human_player_one=True,
-                     human_player_two=False)
+                     human_player_two=True,
+                     undo_moves=True)
 
     gs = engine.GameState()
 
@@ -344,13 +366,14 @@ def main():
         if not prog.game_over and not prog.human_turn and not prog.move_made:
             ai.make_ai_move(prog, gs, comp)
 
+
         if not prog.game_over:
             prog.draw_game_state(gs)
 
             #if prog.mousedown != ():
             #    prog.animate_move(gs)
             if prog.piece_held is not None:
-                prog.animate_move(gs)
+                prog.animate_move(gs.white_move)
 
             #if prog.move_made:
             #    gs.get_valid_moves()
@@ -362,9 +385,24 @@ def main():
             prog.draw_end_game_text(
                 '{} wins by checkmate!'.format('Black' if gs.white_move
                                                else 'White'))
+            prog.draw_result('1-0' if not gs.white_move else '0-1')
+
         elif gs.stalemate:
             prog.game_over = True
-            prog.draw_end_game_text('Stalemate!')
+            prog.draw_end_game_text('Stalemate')
+            prog.draw_result('1/2-1/2')
+
+        elif gs.is_three_fold:
+            prog.game_over = True
+            prog.draw_end_game_text('Three-fold repetition')
+            prog.draw_result('1/2-1/2')
+
+        elif gs.is_fifty_rule:
+            prog.game_over = True
+            prog.draw_end_game_text('Fifty moves rule')
+            prog.draw_result('1/2-1/2')
+
+        # TODO: need to include impossibility of checkmate too
 
         prog.clock.tick(prog.max_fps)
 

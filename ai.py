@@ -4,7 +4,7 @@ import random
 class AI:
     piece_scores = {'k': 0,
                     'q': 9,
-                    'r': 6,
+                    'r': 5,
                     'b': 3,
                     'n': 3,
                     'p': 1,
@@ -13,7 +13,7 @@ class AI:
     checkmate = 1000 #float('inf')
     stalemate = 0
 
-    max_depth = 3
+    max_depth = 4
 
 
 
