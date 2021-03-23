@@ -17,15 +17,19 @@ class AI:
 
 
 
-def make_ai_move(prog, game_state, comp):
-    ai_move = find_best_move_nega_max_a_b(game_state, comp)
+def add_ai_move(comp, prog, ai_game_state):
+    prog.looking_for_ai_move = True
+
+    ai_move = find_best_move_nega_max_a_b(ai_game_state, comp)
 
     if ai_move is None:
-        ai_move = find_random_move(game_state)
+        ai_move = find_random_move(ai_game_state)
 
-    game_state.make_move(ai_move)
+    # manually added the ai_move here as threading means returning this is a
+    # bit awkward
+    prog.add_move(ai_move)
 
-    prog.move_made = True
+    prog.looking_for_ai_move = False
 
 
 def find_best_move_nega_max_a_b(game_state, comp):
@@ -69,7 +73,7 @@ def find_move_nega_max_a_b(game_state, valid_moves, comp, current_depth,
             if current_depth == comp.max_depth:
                 next_move = move
 
-        game_state.undo_move()
+        game_state.undo_move(quick=True)
 
         if max_score > alpha:
             alpha = max_score

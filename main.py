@@ -2,10 +2,16 @@ import ai
 import engine
 import pygame as p
 
+import copy
+
 import datetime
 import time
 
+import math
+
+#from multiprocessing.pool import ThreadPool
 #from multiprocessing import Process
+import _thread
 
 
 def get_pieces_images(pieces, size):
@@ -34,6 +40,7 @@ class Programme:
               'border'       : p.Color(50, 50, 50),
               'sq_selected'  : p.Color('purple'),
               'valid_moves'  : p.Color('yellow'),
+              'premoves'     : p.Color('yellow'),
               'post_move'    : p.Color('red'),
               'sidebar'      : p.Color(50, 50, 50),
               'move_log_text': p.Color('white'),
@@ -80,6 +87,9 @@ class Programme:
     def __init__(self, human_player_one=True, human_player_two=False,
                  game_type='rapid'):
 
+        self.moves_to_execute_white = []
+        self.moves_to_execute_black = []
+        self.looking_for_ai_move = False
         self.move_made = False
         self.mouseup = None
         self.mousedown = None
@@ -99,30 +109,19 @@ class Programme:
             print('Game time must be rapid, blitz, bullet or standard.')
             exit(1)
 
+        '''
         if (not self.human_player_one or not self.human_player_two) and \
                 self.game_type != 'standard':
             print('Cannot have a timed game against the computer.')
             exit(2)
+        '''
 
-        self.undo_moves = True if self.game_type == 'standard' else False
+        self.undo_moves = False #True if self.game_type == 'standard' else
+        # False
 
         self.get_times()
 
         self.prog_running = True
-
-    '''
-    def reset(self):
-        self.move_made = False
-        self.mouseup = None
-        self.mousedown = None
-        self.piece_selected = None
-        self.piece_selected_square = ()
-        self.piece_held = None
-        self.piece_held_origin = ()
-        self.game_started = False
-        self.game_over = False
-        self.get_times()
-    '''
 
     def get_times(self):
         self.timed_game = True
@@ -173,6 +172,7 @@ class Programme:
         self.highlight_squares_pre_move(game_state)
         self.highlight_squares_post_move(game_state.move_log)
         self.draw_pieces(game_state.board)
+        self.draw_premoves()
 
         self.draw_sidebar()
         self.draw_pieces_taken(game_state)
@@ -239,6 +239,33 @@ class Programme:
                                             row * self.sq_size,
                                             self.sq_size,
                                             self.sq_size))
+
+    def draw_premoves(self):
+        rad = 2.0 * math.pi / 3.0
+        trirad = 7.0
+        thickness = 3
+
+        moves = self.moves_to_execute_white + self.moves_to_execute_black
+
+        for move in moves:
+            start = self.sq_size * (move.start_col + 0.5),\
+                    self.sq_size * (move.start_row + 0.5)
+            end = self.sq_size * (move.end_col + 0.5),\
+                  self.sq_size * (move.end_row + 0.5)
+
+            p.draw.line(self.screen, self.colors['premoves'], start, end,
+                        thickness)
+            rotation = (math.atan2(start[1] - end[1],
+                                   end[0] - start[0])) + math.pi / 2.0
+            p.draw.polygon(self.screen, self.colors['premoves'],
+                           ((end[0] + trirad * math.sin(rotation),
+                             end[1] + trirad * math.cos(rotation)),
+                            (end[0] + trirad * math.sin(rotation - rad),
+                             end[1] + trirad * math.cos(
+                                 rotation - rad)),
+                            (end[0] + trirad * math.sin(rotation + rad),
+                             end[1] + trirad * math.cos(
+                                 rotation + rad))))
 
     def draw_sidebar(self):
         self.sidebar = p.Rect(self.width_board, 0,
@@ -352,25 +379,24 @@ class Programme:
         self.screen.blit(text_object, text_location)
 
 
-    def animate_move(self, white_move):
-        if self.piece_held[0] == ('w' if white_move else 'b'):
-            mouse_col, mouse_row = p.mouse.get_pos()
+    def animate_move(self):
+        mouse_col, mouse_row = p.mouse.get_pos()
 
-            start_square = p.Rect(self.piece_held_origin[1] * self.sq_size,
-                                  self.piece_held_origin[0] * self.sq_size,
-                                  self.sq_size,
-                                  self.sq_size)
+        start_square = p.Rect(self.piece_held_origin[1] * self.sq_size,
+                              self.piece_held_origin[0] * self.sq_size,
+                              self.sq_size,
+                              self.sq_size)
 
-            p.draw.rect(self.screen, self.colors['sq_selected'],
-                        start_square)
+        p.draw.rect(self.screen, self.colors['sq_selected'],
+                    start_square)
 
-            rect = p.Rect(mouse_col - self.sq_size//2,
-                          mouse_row - self.sq_size//2,
-                          self.sq_size,
-                          self.sq_size)
+        rect = p.Rect(mouse_col - self.sq_size//2,
+                      mouse_row - self.sq_size//2,
+                      self.sq_size,
+                      self.sq_size)
 
-            self.screen.blit(self.pieces_images[self.piece_held],
-                             rect)
+        self.screen.blit(self.pieces_images[self.piece_held],
+                         rect)
 
         #p.display.update(rect)
         p.display.flip()
@@ -378,7 +404,8 @@ class Programme:
     def try_to_hold_piece(self, game_state):
         piece = game_state.board[self.mousedown.row][self.mousedown.col]
 
-        if piece[0] == ('w' if game_state.white_move else 'b'):
+        if piece[0] in ['w' if self.human_player_one else '',
+                        'b' if self.human_player_two else '']:
             self.piece_held = piece
             self.piece_held_origin = (self.mousedown.row,
                                       self.mousedown.col)
@@ -391,17 +418,46 @@ class Programme:
 
         return Click(x, y, row, col)
 
-    def attempt_move(self, move, game_state):
-        for m in game_state.valid_moves:
-            if move == m:
-                game_state.make_move(m)
-                self.move_made = True
+    def add_move(self, move):
+        if move.start_row == move.end_row and move.start_col == move.end_col:
+            pass
+        else:
+            if move.piece_moved[0] == 'w':
+                self.moves_to_execute_white.append(move)
+            else:
+                self.moves_to_execute_black.append(move)
 
-                if not self.game_started:
-                    self.start_timer()
-                    self.game_started = True
+    def execute_move(self, game_state):
+        if game_state.white_move and len(self.moves_to_execute_white) > 0:
+            move = self.moves_to_execute_white[0]
+            for m in game_state.valid_moves:
+                if move == m:
+                    game_state.make_move(m)
+                    self.move_made = True
+                    break
 
-                break
+            if self.move_made:
+                self.moves_to_execute_white.pop(0)
+            else:
+                self.moves_to_execute_white = []
+
+            if not self.game_started:
+                self.start_timer()
+                self.game_started = True
+
+        elif not game_state.white_move and \
+            len(self.moves_to_execute_black) > 0:
+            move = self.moves_to_execute_black[0]
+            for m in game_state.valid_moves:
+                if move == m:
+                    game_state.make_move(m)
+                    self.move_made = True
+                    break
+
+            if self.move_made:
+                self.moves_to_execute_black.pop(0)
+            else:
+                self.moves_to_execute_black = []
 
     def check_endgame(self, game_state):
         if self.timeout:
@@ -440,14 +496,14 @@ class Programme:
         if event.type == p.MOUSEBUTTONDOWN:
             self.mousedown = self.get_mouse_click(p.mouse.get_pos())
 
-            if self.mousedown.on_the_board:
+            if self.mousedown.on_the_board and not self.game_over:
                 self.try_to_hold_piece(game_state)
 
         elif event.type == p.MOUSEBUTTONUP:
             if self.mousedown is not None:
                 self.mouseup = self.get_mouse_click(p.mouse.get_pos())
 
-                if self.mouseup.on_the_board:
+                if self.mouseup.on_the_board and not self.game_over:
                     # if same square then highlight that pieces moves
                     if self.mouseup == self.mousedown and self.piece_selected is \
                             None:
@@ -460,20 +516,22 @@ class Programme:
                                            self.mouseup.row, self.mouseup.col),
                                            game_state.board)
 
-                        self.attempt_move(move, game_state)
+                        self.add_move(move)
 
-                        self.piece_selected = self.piece_held
-                        self.piece_selected_square = self.piece_held_origin
+                        #self.piece_selected = self.piece_held
+                        #self.piece_selected_square = self.piece_held_origin
+                        self.piece_held = None
+                        self.piece_held_origin = ()
 
                     elif self.piece_selected is not None:
                         # try to make move to a valid square, other just
                         # unselect the piece
                         move = engine.Move(self.piece_selected_square,
-                                           (
-                                           self.mouseup.row, self.mouseup.col),
+                                           (self.mouseup.row,
+                                            self.mouseup.col),
                                            game_state.board)
 
-                        self.attempt_move(move, game_state)
+                        self.add_move(move)
 
                         self.piece_selected = None
                         self.piece_selected_square = ()
@@ -492,13 +550,21 @@ class Programme:
                 self.piece_selected = None
                 self.piece_selected_square = ()
 
+            elif event.key == p.K_c:
+                if self.human_player_one:
+                    self.moves_to_execute_white.pop()
+                elif self.human_player_two:
+                    self.moves_to_execute_black.pop()
+
             elif event.key == p.K_r:
-                # prog.reset()
+                #prog.reset()
                 self.__init__(self.human_player_one, self.human_player_two,
                               self.game_type)
                 # game_state reset is done in the main function
 
             elif event.key == p.K_u and self.undo_moves:
+                self.moves_to_execute_white = []
+                self.moves_to_execute_black = []
                 game_state.undo_move()
                 self.move_made = True
                 self.game_over = False
@@ -529,8 +595,8 @@ class Click:
 
 def main():
     prog = Programme(human_player_one=True,
-                     human_player_two=True,
-                     game_type='rapid')
+                     human_player_two=False,
+                     game_type='blitz')
 
     gs = engine.GameState()
 
@@ -555,21 +621,24 @@ def main():
             if e.type == p.KEYDOWN and e.key == p.K_r:
                 gs = engine.GameState()
 
-        if not prog.game_over and not prog.human_turn and not prog.move_made:
-            ai.make_ai_move(prog, gs, comp)
+        # try to execute a move that may be waiting
+        if not prog.game_over:
+            prog.execute_move(gs)
 
+        if not prog.game_over and not prog.human_turn and not prog.move_made\
+                and not prog.looking_for_ai_move:
+
+            # create a copy of the game stat for the ai to work with freely
+            ai_gs = copy.deepcopy(gs)
+
+            _thread.start_new_thread(ai.add_ai_move, (comp, prog, ai_gs))
 
         if not prog.game_over:
             prog.draw_game_state(gs)
 
-            #if prog.mousedown != ():
-            #    prog.animate_move(gs)
             if prog.piece_held is not None:
-                prog.animate_move(gs.white_move)
+                prog.animate_move()
 
-            #if prog.move_made:
-            #    gs.get_valid_moves()
-            #    prog.move_made = False
             prog.move_made = False
 
         prog.check_endgame(gs)
@@ -584,3 +653,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

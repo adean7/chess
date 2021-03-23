@@ -57,14 +57,16 @@ class GameState:
 
     def __str__(self):
         string = ''
+
         for row in range(8):
             for col in range(8):
                 string += self.board[row][col]
                 string += ''
             string += '\n'
+
         return string
 
-    def equal_board(self, other_board):
+    def __eq__(self, other_board):
         for row in range(8):
             for col in range(8):
                 if self.board[row][col] != other_board[row][col]:
