@@ -1,5 +1,6 @@
 import copy
-import time
+
+from collections import Counter
 
 
 class GameState:
@@ -15,12 +16,22 @@ class GameState:
 
         self.board_log = [copy.deepcopy(self.board)]
 
+        self.pieces_order = {'k': 1, 'q': 2, 'r': 3, 'b': 4, 'n': 5, 'p': 6}
+        self.all_board_pieces_counter = Counter(['k', 'q', 'r', 'r',
+                                                 'b', 'b', 'n', 'n',
+                                                 'p', 'p', 'p', 'p',
+                                                 'p', 'p', 'p', 'p'])
+
         self.white_move = True
         self.move_log = []
         self.valid_move_log = []
 
         self.white_king = (7, 4)
         self.black_king = (0, 4)
+
+        self.white_taken = []
+        self.black_taken = []
+        self.get_pieces_taken()
 
         self.in_check = False
         self.pins = []
@@ -44,10 +55,6 @@ class GameState:
 
         self.get_valid_moves()
 
-        self.white_timer = 0
-        self.black_timer = 0
-        self.move_time = time.time()
-
     def __str__(self):
         string = ''
         for row in range(8):
@@ -68,12 +75,6 @@ class GameState:
     def make_move(self, move, quick=False):
         if not quick:
             move.get_extra_info()
-
-            if self.white_move:
-                self.white_timer += time.time() - self.move_time
-            else:
-                self.black_timer += time.time() - self.move_time
-            self.move_time = time.time()
 
         self.board[move.start_row][move.start_col] = '--'
         self.board[move.end_row][move.end_col] = move.piece_moved
@@ -147,6 +148,8 @@ class GameState:
 
         self.board_log.append(copy.deepcopy(self.board))
 
+        self.get_pieces_taken()
+
         if len(self.board_log) >= 9 and \
             self.board_log[-1] == self.board_log[-5] == self.board_log[-9]:
             self.is_three_fold = True
@@ -176,12 +179,15 @@ class GameState:
         move.is_three_fold = self.is_three_fold
         move.is_fifty_rule = self.is_fifty_rule
 
-    def undo_move(self):
+    def undo_move(self, quick=False):
         if len(self.move_log) != 0:
             move = self.move_log.pop()
+            self.white_move = not self.white_move
+
+            '''
             self.board[move.start_row][move.start_col] = move.piece_moved
             self.board[move.end_row][move.end_col] = move.piece_captured
-            self.white_move = not self.white_move
+
             if move.piece_moved == 'wk':
                 self.white_king = (move.start_row, move.start_col)
             elif move.piece_moved == 'bk':
@@ -190,12 +196,9 @@ class GameState:
             if move.is_enpassant:
                 self.board[move.end_row][move.end_col] = '--'
                 self.board[move.start_row][move.end_col] = move.piece_captured
-
-            self.enpassant_log.pop()
-            self.enpassant = self.enpassant_log[-1]
-
+                
             if move.piece_moved[1] == 'p' and abs(move.start_row -
-                                                  move.end_row) == 2:
+                                      move.end_row) == 2:
                 self.enpassant = ()
 
             if move.is_castling:
@@ -207,6 +210,10 @@ class GameState:
                     self.board[move.end_row][move.end_col-2] = self.board[
                         move.end_row][move.end_col+1]
                     self.board[move.end_row][move.end_col+1] = '--'
+            '''
+
+            self.enpassant_log.pop()
+            self.enpassant = self.enpassant_log[-1]
 
             self.castling_log.pop()
             self.castling = self.castling_log[-1].copy()
@@ -218,7 +225,9 @@ class GameState:
             self.moves_since_capture = self.moves_since_capture_log[-1]
 
             self.board_log.pop()
-            #self.board = copy.deepcopy(self.board_log[-1])
+            self.board = copy.deepcopy(self.board_log[-1])
+
+            self.get_pieces_taken()
 
             self.in_check = False
             self.checkmate = False
@@ -277,13 +286,12 @@ class GameState:
                 self.checkmate = True
             else:
                 self.stalemate = True
-                # TODO: add in repetition.
 
-        if return_moves is False:
+        if return_moves:
+            return moves
+        else:
             self.valid_move_log.append(moves)
             self.valid_moves = moves
-        else:
-            return moves
 
     def get_all_moves(self):
         moves = []
@@ -605,6 +613,41 @@ class GameState:
                 return True
 
         return False
+
+    def get_pieces_taken(self):
+        white_has = []
+        black_has = []
+
+        for row in self.board:
+            for piece in row:
+                if piece[0] == 'w':
+                    white_has.append(piece[1])
+                elif piece[0] == 'b':
+                    black_has.append(piece[1])
+
+        self.white_taken = list((self.all_board_pieces_counter - Counter(
+            black_has)).elements())
+
+        self.black_taken = list((self.all_board_pieces_counter - Counter(
+            white_has)).elements())
+
+        white_pawn_promotions = len(list((Counter(white_has) -
+                                self.all_board_pieces_counter).elements()))
+
+        black_pawn_promotions = len(list((Counter(black_has) -
+                                self.all_board_pieces_counter).elements()))
+
+        for _ in range(white_pawn_promotions):
+            self.black_taken.remove('p')
+
+        for _ in range(black_pawn_promotions):
+            self.white_taken.remove('p')
+
+        self.white_taken = ['b' + element for element in self.white_taken]
+        self.black_taken = ['w' + element for element in self.black_taken]
+
+        self.white_taken.sort(key=lambda x: self.pieces_order[x[1]])
+        self.black_taken.sort(key=lambda x: self.pieces_order[x[1]])
 
 
 class Move:

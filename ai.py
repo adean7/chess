@@ -248,10 +248,7 @@ def find_random_move(game_state):
 
 def score_board(game_state, comp):
     if game_state.checkmate:
-        if game_state.white_move:
-            return -1 * comp.checkmate
-        else:
-            return +1 * comp.checkmate
+        return (-1 if game_state.white_move else +1) * comp.checkmate
     elif game_state.stalemate:
         return comp.stalemate
 
