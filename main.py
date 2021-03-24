@@ -40,10 +40,12 @@ class Programme:
               'border'       : p.Color(50, 50, 50),
               'sq_selected'  : p.Color('purple'),
               'valid_moves'  : p.Color('yellow'),
-              'premoves'     : p.Color('yellow'),
+              'premoves'     : p.Color('red'),
               'post_move'    : p.Color('red'),
               'sidebar'      : p.Color(50, 50, 50),
               'move_log_text': p.Color('white'),
+              'white_score'  : p.Color('black'),
+              'black_score'  : p.Color('white'),
               'timers'       : p.Color('white'),
               'end_game_text': p.Color('black'),
               'result'       : p.Color('white'),
@@ -55,6 +57,9 @@ class Programme:
 
     fonts = {'move_log_text': p.font.SysFont('sfnsmono', size=16,
                                              bold=False, italic=False),
+
+             'scores'       : p.font.SysFont('sfnsmono', size=14,
+                                             bold=True, italic=False),
 
              'timers'       : p.font.SysFont('sfnsmono', size=24,
                                              bold=True, italic=False),
@@ -171,8 +176,9 @@ class Programme:
         self.draw_board()
         self.highlight_squares_pre_move(game_state)
         self.highlight_squares_post_move(game_state.move_log)
-        self.draw_pieces(game_state.board)
+        self.draw_pieces(game_state)
         self.draw_premoves()
+
 
         self.draw_sidebar()
         self.draw_pieces_taken(game_state)
@@ -229,10 +235,15 @@ class Programme:
             self.screen.blit(surface, (move.end_col * self.sq_size,
                                        move.end_row * self.sq_size))
 
-    def draw_pieces(self, board):
+    def draw_pieces(self, game_state):
+        temp_board = copy.deepcopy(game_state.board)
+
+        for move in self.moves_to_execute_white:
+            temp_board = engine.quick_move(move, temp_board)
+
         for row in range(self.dimension):
             for col in range(self.dimension):
-                piece = board[row][col]
+                piece = temp_board[row][col]
                 if piece != "--":
                     self.screen.blit(self.pieces_images[piece],
                                      p.Rect(col * self.sq_size,
@@ -295,6 +306,31 @@ class Programme:
         self.draw_pieces_taken_func(self.width_board, self.height_board -
                                     self.sq_size // 2,
                                     game_state.white_taken[8:])
+
+        if game_state.white_score > 0:
+            object_white = self.fonts['scores'].render(
+                '{:>+d}'.format(game_state.white_score),
+                0, self.colors['white_score'])
+
+            loc_white = p.Rect(self.width_board, 0, self.width_sidebar,
+                               self.height_board).move(
+                self.width_sidebar - self.sq_size // 2,
+                self.height_board - self.sq_size // 2 +
+                object_white.get_height() // 2)
+
+            self.screen.blit(object_white, loc_white)
+
+        elif game_state.black_score > 0:
+            object_black = self.fonts['scores'].render(
+                '{:>+d}'.format(game_state.black_score),
+                0, self.colors['black_score'])
+
+            loc_black = p.Rect(self.width_board, 0, self.width_sidebar,
+                               self.height_board).move(
+                self.width_sidebar - self.sq_size // 2,
+                self.sq_size // 2 + object_black.get_height() // 2)
+
+            self.screen.blit(object_black, loc_black)
 
     def draw_pieces_taken_func(self, x, y, lst):
         for piece in lst:
@@ -402,6 +438,9 @@ class Programme:
         p.display.flip()
 
     def try_to_hold_piece(self, game_state):
+        self.piece_selected = None
+        self.piece_selected_square = ()
+
         piece = game_state.board[self.mousedown.row][self.mousedown.col]
 
         if piece[0] in ['w' if self.human_player_one else '',
@@ -438,12 +477,12 @@ class Programme:
 
             if self.move_made:
                 self.moves_to_execute_white.pop(0)
+
+                if not self.game_started:
+                    self.start_timer()
+                    self.game_started = True
             else:
                 self.moves_to_execute_white = []
-
-            if not self.game_started:
-                self.start_timer()
-                self.game_started = True
 
         elif not game_state.white_move and \
             len(self.moves_to_execute_black) > 0:
@@ -596,7 +635,7 @@ class Click:
 def main():
     prog = Programme(human_player_one=True,
                      human_player_two=False,
-                     game_type='blitz')
+                     game_type='rapid')
 
     gs = engine.GameState()
 

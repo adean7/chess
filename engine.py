@@ -21,6 +21,9 @@ class GameState:
                                                  'b', 'b', 'n', 'n',
                                                  'p', 'p', 'p', 'p',
                                                  'p', 'p', 'p', 'p'])
+        self.piece_scores = {'k': 0, 'q': 9, 'r': 5,
+                             'b': 3, 'n': 3, 'p': 1,
+                             '-': 0}
 
         self.white_move = True
         self.move_log = []
@@ -31,6 +34,8 @@ class GameState:
 
         self.white_taken = []
         self.black_taken = []
+        self.white_score = 0
+        self.black_score = 0
         self.get_pieces_taken()
 
         self.in_check = False
@@ -648,6 +653,23 @@ class GameState:
         self.white_taken = ['b' + element for element in self.white_taken]
         self.black_taken = ['w' + element for element in self.black_taken]
 
+        self.white_score = sum([self.piece_scores[piece[1]] for piece in
+                                self.white_taken])
+
+        self.black_score = sum([self.piece_scores[piece[1]] for piece in
+                                self.black_taken])
+
+        if self.white_score > self.black_score:
+            self.white_score -= self.black_score
+            self.black_score = 0
+        elif self.white_score < self.black_score:
+            self.black_score -= self.white_score
+            self.white_score = 0
+        else:
+            self.white_score = 0
+            self.black_score = 0
+
+
         self.white_taken.sort(key=lambda x: self.pieces_order[x[1]])
         self.black_taken.sort(key=lambda x: self.pieces_order[x[1]])
 
@@ -746,3 +768,30 @@ class Move:
 
     def get_rank_file(self, row, col):
         return self.cols_to_files[col] + self.rows_to_ranks[row]
+
+
+
+
+
+def quick_move(move, board):
+    board[move.start_row][move.start_col] = '--'
+    board[move.end_row][move.end_col] = move.piece_moved
+
+    if move.is_pawn_promotion:
+        board[move.end_row][move.end_col] = move.piece_moved[0] + 'q'
+
+    if move.is_enpassant:
+        board[move.start_row][move.end_col] = '--'
+
+    if move.is_castling:
+        if move.end_col - move.start_col == 2:
+            board[move.end_row][move.end_col - 1] = board[
+                move.end_row][move.end_col + 1]
+            board[move.end_row][move.end_col + 1] = '--'
+        else:
+            board[move.end_row][move.end_col + 1] = board[
+                move.end_row][move.end_col - 2]
+            board[move.end_row][move.end_col - 2] = '--'
+
+    return board
+

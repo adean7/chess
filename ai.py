@@ -2,18 +2,10 @@ import random
 
 
 class AI:
-    piece_scores = {'k': 0,
-                    'q': 9,
-                    'r': 5,
-                    'b': 3,
-                    'n': 3,
-                    'p': 1,
-                    '-': 0}
-
     checkmate = 1000 #float('inf')
     stalemate = 0
 
-    max_depth = 4
+    max_depth = 3
 
 
 
@@ -146,7 +138,7 @@ def find_move_min_max(game_state, valid_moves, comp, current_depth,
     global next_move
 
     if current_depth == 0:
-        return score_material(game_state.board, comp.piece_scores)
+        return score_material(game_state.board, game_state.piece_scores)
 
     shuffled_moves = random.sample(valid_moves, len(valid_moves))
 
@@ -224,7 +216,8 @@ def find_best_move_basic(game_state, comp):
                     score = comp.stalemate
                 else:
                     score = -turn_multiplier * \
-                            score_material(game_state.board, comp.piece_scores)
+                            score_material(game_state.board,
+                                           game_state.piece_scores)
 
                 if score > opponent_max_score:
                     opponent_max_score = score
@@ -256,7 +249,7 @@ def score_board(game_state, comp):
     elif game_state.stalemate:
         return comp.stalemate
 
-    score = score_material(game_state.board, comp.piece_scores)
+    score = score_material(game_state.board, game_state.piece_scores)
 
     return score
 
