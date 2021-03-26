@@ -9,17 +9,17 @@ class AI:
 
 
 
-def add_ai_move(comp, prog, ai_game_state):
+def add_ai_move(prog, ai_game_state):
     prog.looking_for_ai_move = True
 
-    ai_move = find_best_move_nega_max_a_b(ai_game_state, comp)
+    ai_move = find_best_move_nega_max_a_b(ai_game_state, prog.comp)
 
     if ai_move is None:
         ai_move = find_random_move(ai_game_state)
 
     # manually added the ai_move here as threading means returning this is a
     # bit awkward
-    prog.add_move(ai_move)
+    prog.add_ai_move(ai_move)
 
     prog.looking_for_ai_move = False
 

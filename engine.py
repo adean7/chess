@@ -1,10 +1,13 @@
 import copy
+import time
 
 from collections import Counter
 
 
 class GameState:
-    def __init__(self):
+    def __init__(self, ID=0, game_mode='singleplayer', game_type='blitz'):
+        self.id = ID
+
         self.board = [['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
                       ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
                       ['--', '--', '--', '--', '--', '--', '--', '--'],
@@ -28,6 +31,9 @@ class GameState:
         self.white_move = True
         self.move_log = []
         self.valid_move_log = []
+
+        #self.moves_to_execute_white = []
+        #self.moves_to_execute_black = []
 
         self.white_king = (7, 4)
         self.black_king = (0, 4)
@@ -58,7 +64,19 @@ class GameState:
         self.is_three_fold = False
         self.is_fifty_rule = False
 
+        self.game_type = game_type.lower()
+        if self.game_type not in ['rapid', 'blitz', 'bullet', 'standard']:
+            print('Game type must be rapid, blitz, bullet or standard.')
+            exit(1)
+
+        self.game_mode = game_mode
+
+        self.ready = False if self.game_mode == 'online' else True
+        self.game_started = False
+        self.game_over = False
+
         self.get_valid_moves()
+        self.get_times()
 
     def __str__(self):
         string = ''
@@ -79,9 +97,57 @@ class GameState:
 
         return True
 
+    def get_times(self):
+        self.timed_game = True
+
+        if self.game_type == 'rapid':
+            self.time_alert = 30.0
+            self.white_time = 600.0
+            self.black_time = 600.0
+        elif self.game_type == 'blitz':
+            self.time_alert = 20.0
+            self.white_time = 180.0
+            self.black_time = 180.0
+        elif self.game_type == 'bullet':
+            self.time_alert = 10.0
+            self.white_time = 60.0
+            self.black_time = 60.0
+        elif self.game_type == 'standard':
+            self.time_alert = None
+            self.white_time = None
+            self.black_time = None
+            self.timed_game = False
+
+        self.timeout = False
+
+        self.last_time_stamp = None
+
+    def start_timer(self):
+        self.last_time_stamp = time.time()
+
+    def update_timers(self):
+        current_time = time.time()
+        time_diff = current_time - self.last_time_stamp
+
+        if self.white_move:
+            self.white_time -= time_diff
+            if self.white_time <= 0.0:
+                self.white_time = 0.0
+                self.timeout = True
+        else:
+            self.black_time -= time_diff
+            if self.black_time <= 0.0:
+                self.black_time = 0.0
+                self.timeout = True
+
+        self.last_time_stamp = current_time
+
     def make_move(self, move, quick=False):
         if not quick:
             move.get_extra_info()
+            if not self.game_started:
+                self.start_timer()
+                self.game_started = True
 
         self.board[move.start_row][move.start_col] = '--'
         self.board[move.end_row][move.end_col] = move.piece_moved
@@ -773,25 +839,5 @@ class Move:
 
 
 
-def quick_move(move, board):
-    board[move.start_row][move.start_col] = '--'
-    board[move.end_row][move.end_col] = move.piece_moved
 
-    if move.is_pawn_promotion:
-        board[move.end_row][move.end_col] = move.piece_moved[0] + 'q'
-
-    if move.is_enpassant:
-        board[move.start_row][move.end_col] = '--'
-
-    if move.is_castling:
-        if move.end_col - move.start_col == 2:
-            board[move.end_row][move.end_col - 1] = board[
-                move.end_row][move.end_col + 1]
-            board[move.end_row][move.end_col + 1] = '--'
-        else:
-            board[move.end_row][move.end_col + 1] = board[
-                move.end_row][move.end_col - 2]
-            board[move.end_row][move.end_col - 2] = '--'
-
-    return board
 
