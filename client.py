@@ -88,6 +88,8 @@ class Programme:
     pieces_images = get_pieces_images(pieces, sq_size)
     pieces_images_small = get_pieces_images(pieces, sq_size // 2)
 
+    move_sound = p.mixer.Sound('sounds/move.wav')
+
     def __init__(self, player, network=None, game_mode='singleplayer',
                  game_type='blitz'):
 
@@ -205,7 +207,10 @@ class Programme:
         temp_board = copy.deepcopy(self.game_state.board)
 
         for move in self.moves_to_execute:
-            temp_board = quick_move(move, temp_board)
+            if self.game_mode == 'online':
+                temp_board = quick_move_tpl(move, temp_board)
+            else:
+                temp_board = quick_move_class(move, temp_board)
 
         for row in range(self.dimension):
             for col in range(self.dimension):
@@ -464,6 +469,7 @@ class Programme:
                           (not self.game_state.white_move and
                            self.player_two)
 
+    '''
     def add_online_move(self, move):
         start_row, start_col = move[0], move[1]
         end_row, end_col = move[2], move[3]
@@ -475,8 +481,9 @@ class Programme:
             if (piece_moved[0] == 'w' and self.player_one) or \
                     (piece_moved[0] == 'b' and self.player_two):
                 self.moves_to_execute.append(move)
+    '''
 
-    def add_offline_move(self, move):
+    def add_move(self, move):
         if move.start_row == move.end_row and move.start_col == move.end_col:
             pass
         else:
@@ -499,31 +506,36 @@ class Programme:
     def try_to_make_move(self):
         if self.game_state.ready and not self.game_state.game_over:
 
-            if ((self.game_state.white_move and self.player_one) or
-                 not self.game_state.white_move and self.player_two):
+            if self.human_turn and len(self.moves_to_execute) > 0:
+                move = self.moves_to_execute[0]
 
-                if len(self.moves_to_execute) > 0:
-                    move = self.moves_to_execute[0]
+                for m in self.game_state.valid_moves:
+                    if move == m:
+                        self.game_state.make_move(m)
+                        self.move_made = True
+                        break
 
-                    for m in self.game_state.valid_moves:
-                        if move == m:
-                            self.game_state.make_move(m)
-                            self.move_made = True
-                            break
+                if self.move_made:
+                    self.move_sound.play()
+                    self.moves_to_execute.pop(0)
 
-                    if self.move_made:
-                        self.moves_to_execute.pop(0)
+                else:
+                    self.moves_to_execute = []
 
-                    else:
-                        self.moves_to_execute = []
+            elif len(self.moves_to_execute_ai) > 0:
+                move = self.moves_to_execute_ai[0]
 
-            else:
-                if len(self.moves_to_execute_ai) > 0:
-                    move = self.moves_to_execute_ai[0]
+                for m in self.game_state.valid_moves:
+                    if move == m:
+                        self.game_state.make_move(m)
+                        self.move_made = True
+                        break
 
-                    self.game_state.make_move(move)
-                    self.move_made = True
+                if self.move_made:
+                    self.move_sound.play()
                     self.moves_to_execute_ai.pop(0)
+                else:
+                    self.moves_to_execute_ai = []
 
     def try_to_send_move(self):
         # try to execute a move that may be waiting
@@ -533,16 +545,21 @@ class Programme:
                 len(self.moves_to_execute) > 0:
 
             move = self.moves_to_execute[0]
+            '''
             start_row, start_col = move[0], move[1]
             end_row, end_col = move[2], move[3]
+            '''
 
             for num, m in enumerate(self.game_state.valid_moves):
+                '''
                 if str(start_row) + str(start_col) + \
                         str(end_row) + str(end_col) == m.move_id:
+                '''
+                if move == m:
                     #ntwrk.send(str(num))
                     try:
-                        #gs = ntwrk.send(num)
                         self.network.send(num)
+                        #self.network.send(move)
                     except EOFError:
                         print('EOFError')
 
@@ -579,6 +596,7 @@ class Programme:
                             self.piece_selected_square = self.piece_held_origin
 
                         elif self.piece_held is not None:
+                            '''
                             if self.game_mode == 'online':
                                 move = (self.piece_held_origin[0],
                                         self.piece_held_origin[1],
@@ -589,12 +607,13 @@ class Programme:
                                 self.add_online_move(move)
 
                             else:
-                                move = engine.Move(self.piece_held_origin,
-                                                   (self.mouseup.row,
-                                                    self.mouseup.col),
-                                                   self.game_state.board)
+                            '''
+                            move = engine.Move(self.piece_held_origin,
+                                               (self.mouseup.row,
+                                                self.mouseup.col),
+                                               self.game_state.board)
 
-                                self.add_offline_move(move)
+                            self.add_move(move)
 
                             # self.piece_selected = self.piece_held
                             # self.piece_selected_square = self.piece_held_origin
@@ -604,6 +623,7 @@ class Programme:
                         elif self.piece_selected is not None:
                             # try to make move to a valid square, other just
                             # unselect the piece
+                            '''
                             if self.game_mode == 'online':
                                 move = (self.piece_selected_square[0],
                                         self.piece_selected_square[1],
@@ -614,12 +634,13 @@ class Programme:
                                 self.add_online_move(move)
 
                             else:
-                                move = engine.Move(self.piece_selected_square,
-                                                   (self.mouseup.row,
-                                                    self.mouseup.col),
-                                                   self.game_state.board)
+                            '''
+                            move = engine.Move(self.piece_selected_square,
+                                               (self.mouseup.row,
+                                                self.mouseup.col),
+                                               self.game_state.board)
 
-                                self.add_offline_move(move)
+                            self.add_move(move)
 
                             self.piece_selected = None
                             self.piece_selected_square = ()
@@ -674,7 +695,35 @@ class Click:
             else False
 
 
-def quick_move(move, board):
+
+def quick_move_tpl(move, board):
+    start_row, start_col = move[0], move[1]
+    end_row, end_col = move[2], move[3]
+    piece_moved = move[4]
+
+    board[start_row][start_col] = '--'
+    board[end_row][end_col] = piece_moved
+
+    if move.is_pawn_promotion:
+        board[end_row][end_col] = piece_moved[0] + 'q'
+
+    if move.is_enpassant:
+        board[start_row][end_col] = '--'
+
+    if move.is_castling:
+        if move.end_col - move.start_col == 2:
+            board[move.end_row][move.end_col - 1] = board[
+                move.end_row][move.end_col + 1]
+            board[move.end_row][move.end_col + 1] = '--'
+        else:
+            board[move.end_row][move.end_col + 1] = board[
+                move.end_row][move.end_col - 2]
+            board[move.end_row][move.end_col - 2] = '--'
+
+    return board
+
+
+def quick_move_class(move, board):
     board[move.start_row][move.start_col] = '--'
     board[move.end_row][move.end_col] = move.piece_moved
 

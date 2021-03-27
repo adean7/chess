@@ -11,6 +11,8 @@ def single_game(game_type, color='white'):
                             game_type=game_type)
 
     while prog.prog_running:
+        prog.game_state.update_timers()
+
         prog.update_human_turn()
 
         prog.manage_events()
@@ -87,4 +89,5 @@ def main(game_mode='singleplayer', game_type='blitz'):
 
 
 if __name__ == '__main__':
-    main('singleplayer')
+    main('singleplayer', 'rapid')
+

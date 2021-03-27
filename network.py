@@ -1,4 +1,5 @@
 import pickle
+#import json
 import socket
 
 class Network:
@@ -18,7 +19,8 @@ class Network:
         try:
             self.client.connect(self.addr)
             #return self.client.recv(2048).decode()
-            return pickle.loads(self.client.recv(4096))
+            #return pickle.loads(self.client.recv(4096))
+            return json.loads(self.client.recv(2048))
         except:
             return None
 
@@ -26,6 +28,7 @@ class Network:
         try:
             #self.client.send(str.encode(data))
             self.client.send(pickle.dumps(data))
+            #self.client.send(json.dumps(data))
 
             '''
             new_data = []
@@ -40,7 +43,8 @@ class Network:
             return new_data_arr
             '''
 
-            return pickle.loads(self.client.recv(16384))
+            return pickle.loads(self.client.recv(1048576))
+            #return json.loads(self.client.recv(2048))
 
         except socket.error as e:
             print(e)

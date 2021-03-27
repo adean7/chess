@@ -126,21 +126,22 @@ class GameState:
         self.last_time_stamp = time.time()
 
     def update_timers(self):
-        current_time = time.time()
-        time_diff = current_time - self.last_time_stamp
+        if self.timed_game and self.game_started and not self.game_over:
+            current_time = time.time()
+            time_diff = current_time - self.last_time_stamp
 
-        if self.white_move:
-            self.white_time -= time_diff
-            if self.white_time <= 0.0:
-                self.white_time = 0.0
-                self.timeout = True
-        else:
-            self.black_time -= time_diff
-            if self.black_time <= 0.0:
-                self.black_time = 0.0
-                self.timeout = True
+            if self.white_move:
+                self.white_time -= time_diff
+                if self.white_time <= 0.0:
+                    self.white_time = 0.0
+                    self.timeout = True
+            else:
+                self.black_time -= time_diff
+                if self.black_time <= 0.0:
+                    self.black_time = 0.0
+                    self.timeout = True
 
-        self.last_time_stamp = current_time
+            self.last_time_stamp = current_time
 
     def make_move(self, move, quick=False):
         if not quick:

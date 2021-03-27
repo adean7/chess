@@ -1,6 +1,7 @@
 import socket
 import _thread
 import pickle
+#import json
 
 import engine
 
@@ -23,16 +24,17 @@ def threaded_client(conn, p, game_id):
 
     #conn.send(str.encode(str(p)))
     conn.send(pickle.dumps(p))
+    #conn.send(json.dumps(p))
 
     while True:
         for ID in games:
             game = games[ID]
 
-            if game.timed_game and game.game_started:
-                game.update_timers()
+            game.update_timers()
 
         try:
             data = pickle.loads(conn.recv(2048))
+            #data = json.loads(conn.recv(2048))
             #data = conn.recv(4096).decode()
             #print('Received: ', data)
         except:
@@ -56,6 +58,7 @@ def threaded_client(conn, p, game_id):
 
             print('Sending : ', game)
             conn.sendall(pickle.dumps(game))
+            #conn.sendall(json.dumps(game))
 
             # conn.sendall(str.encode(reply))
 
@@ -86,7 +89,9 @@ while True:
     game_id = (id_count - 1) // 2
 
     if id_count % 2 == 1:
-        games[game_id] = engine.GameState(game_id)
+        games[game_id] = engine.GameState(ID=game_id,
+                                          game_mode='online',
+                                          game_type='rapid')
     else:
         games[game_id].ready = True
         p = 1
