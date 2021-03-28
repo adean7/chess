@@ -1,6 +1,9 @@
 import network
 import client
 
+import stockfish
+
+
 
 def single_game(game_type, color='white'):
     plyr = 0 if color == 'white' else 1
@@ -91,3 +94,9 @@ def main(game_mode='singleplayer', game_type='blitz'):
 if __name__ == '__main__':
     main('singleplayer', 'rapid')
 
+    '''
+    s = stockfish.Stockfish()
+    s.set_fen_position("1R6/P1k1P3/3R4/8/8/8/8/K7 w - - 5 30")
+    print(s.get_board_visual())
+    print(s.get_best_move())
+    '''
