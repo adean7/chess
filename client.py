@@ -429,7 +429,6 @@ class Programme:
         return Click(x, y, row, col)
 
     def check_endgame(self):
-        # TODO: need to include impossibility of checkmate too
         if self.game_state.timeout:
             self.game_state.game_over = True
             if not self.game_state.white_move:
@@ -461,6 +460,11 @@ class Programme:
         elif self.game_state.is_fifty_rule:
             self.game_state.game_over = True
             self.draw_end_game_text('Fifty moves rule')
+            self.draw_result('1/2-1/2')
+
+        elif self.game_state.is_impossibility:
+            self.game_state.game_over = True
+            self.draw_end_game_text('Dead position')
             self.draw_result('1/2-1/2')
 
     def update_human_turn(self):

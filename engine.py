@@ -38,6 +38,8 @@ class GameState:
         self.white_king = (7, 4)
         self.black_king = (0, 4)
 
+        self.white_has = []
+        self.black_has = []
         self.white_taken = []
         self.black_taken = []
         self.white_score = 0
@@ -63,6 +65,7 @@ class GameState:
         self.stalemate = False
         self.is_three_fold = False
         self.is_fifty_rule = False
+        self.is_impossibility = False
 
         self.game_type = game_type.lower()
         if self.game_type not in ['rapid', 'blitz', 'bullet', 'standard']:
@@ -245,6 +248,42 @@ class GameState:
                 self.moves_since_capture >= 100:
             self.is_fifty_rule = True
 
+        # white_has and black_has are updated in self.get_pieces_taken()
+        if len(self.white_has) == 1:
+            if len(self.black_has) == 1:
+                self.is_impossibility = True
+            elif len(self.black_has) == 2:
+                if 'b' in self.black_has or 'n' in self.black_has:
+                    self.is_impossibility = True
+        elif len(self.white_has) == 2 and 'b' in self.white_has:
+            c1 = -1
+            c2 = -2
+            for row in range(8):
+                for col in range(8):
+                    if self.board[row][col] == 'wb':
+                        c1 = (row + col) % 2
+                    elif self.board[row][col] == 'bb':
+                        c2 = (row + col) % 2
+                if c1 == c2:
+                    self.is_impossibility = True
+        elif len(self.black_has) == 1:
+            if len(self.white_has) == 1:
+                self.is_impossibility = True
+            elif len(self.white_has) == 2:
+                if 'b' in self.white_has or 'n' in self.white_has:
+                    self.is_impossibility = True
+        elif len(self.black_has) == 2 and 'b' in self.black_has:
+            c1 = -1
+            c2 = -2
+            for row in range(8):
+                for col in range(8):
+                    if self.board[row][col] == 'bb':
+                        c1 = (row + col) % 2
+                    elif self.board[row][col] == 'wb':
+                        c2 = (row + col) % 2
+                if c1 == c2:
+                    self.is_impossibility = True
+
         self.get_valid_moves()
 
         move.is_check = self.in_check
@@ -252,6 +291,7 @@ class GameState:
         move.is_stalemate = self.stalemate
         move.is_three_fold = self.is_three_fold
         move.is_fifty_rule = self.is_fifty_rule
+        move.is_impossibility = self.is_impossibility
 
     def undo_move(self, quick=False):
         if len(self.move_log) != 0:
@@ -689,26 +729,26 @@ class GameState:
         return False
 
     def get_pieces_taken(self):
-        white_has = []
-        black_has = []
+        self.white_has = []
+        self.black_has = []
 
         for row in self.board:
             for piece in row:
                 if piece[0] == 'w':
-                    white_has.append(piece[1])
+                    self.white_has.append(piece[1])
                 elif piece[0] == 'b':
-                    black_has.append(piece[1])
+                    self.black_has.append(piece[1])
 
         self.white_taken = list((self.all_board_pieces_counter - Counter(
-            black_has)).elements())
+            self.black_has)).elements())
 
         self.black_taken = list((self.all_board_pieces_counter - Counter(
-            white_has)).elements())
+            self.white_has)).elements())
 
-        white_pawn_promotions = len(list((Counter(white_has) -
+        white_pawn_promotions = len(list((Counter(self.white_has) -
                                 self.all_board_pieces_counter).elements()))
 
-        black_pawn_promotions = len(list((Counter(black_has) -
+        black_pawn_promotions = len(list((Counter(self.black_has) -
                                 self.all_board_pieces_counter).elements()))
 
         for _ in range(white_pawn_promotions):
@@ -817,6 +857,7 @@ class Move:
         self.is_stalemate = None
         self.is_three_fold = None
         self.is_fifty_rule = None
+        self.is_impossibility = None
 
         self.ranks_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4,
                               '5': 3, '6': 2, '7': 1, '8': 0}
