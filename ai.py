@@ -1,4 +1,4 @@
-import random
+from random import randint, sample
 
 
 class AI:
@@ -6,7 +6,6 @@ class AI:
     stalemate = 0
 
     max_depth = 3
-
 
 
 def add_ai_move(prog, ai_game_state):
@@ -30,8 +29,8 @@ def find_best_move_nega_max_a_b(game_state, comp):
     next_move = None
 
     find_move_nega_max_a_b(game_state, game_state.valid_moves, comp,
-                          comp.max_depth, -1 * comp.checkmate, comp.checkmate,
-                          1 if game_state.white_move else -1)
+                           comp.max_depth, -1 * comp.checkmate, comp.checkmate,
+                           1 if game_state.white_move else -1)
 
     return next_move
 
@@ -45,7 +44,7 @@ def find_move_nega_max_a_b(game_state, valid_moves, comp, current_depth,
 
     # can add move ordering later to improve efficiency
 
-    shuffled_moves = random.sample(valid_moves, len(valid_moves))
+    shuffled_moves = sample(valid_moves, len(valid_moves))
 
     max_score = -1 * comp.checkmate
 
@@ -97,7 +96,7 @@ def find_move_nega_max(game_state, valid_moves, comp, current_depth,
     if current_depth == 0:
         return turn_multiplier * score_board(game_state, comp)
 
-    shuffled_moves = random.sample(valid_moves, len(valid_moves))
+    shuffled_moves = sample(valid_moves, len(valid_moves))
 
     max_score = -1 * comp.checkmate
 
@@ -140,7 +139,7 @@ def find_move_min_max(game_state, valid_moves, comp, current_depth,
     if current_depth == 0:
         return score_material(game_state.board, game_state.piece_scores)
 
-    shuffled_moves = random.sample(valid_moves, len(valid_moves))
+    shuffled_moves = sample(valid_moves, len(valid_moves))
 
     if white_move:
         max_score = -comp.checkmate
@@ -188,16 +187,16 @@ def find_best_move_basic(game_state, comp):
 
     best_player_move = None
 
-    shuffled_moves = random.sample(game_state.valid_moves,
-                                   len(game_state.valid_moves))
+    shuffled_moves = sample(game_state.valid_moves,
+                            len(game_state.valid_moves))
 
     for player_move in shuffled_moves:
         game_state.make_move(player_move)
 
         #opponent_moves = game_state.get_valid_moves(return_moves=True)
         game_state.get_valid_moves()
-        opponent_moves_shuffled = random.sample(game_state.valid_moves,
-                                                len(game_state.valid_moves))
+        opponent_moves_shuffled = sample(game_state.valid_moves,
+                                         len(game_state.valid_moves))
 
         if game_state.stalemate:
             opponent_max_score = comp.stalemate
@@ -236,9 +235,7 @@ def find_best_move_basic(game_state, comp):
 
 
 def find_random_move(game_state):
-    return game_state.valid_moves[random.randint(0,
-                                                 len(game_state.valid_moves)\
-                                                 -1)]
+    return game_state.valid_moves[randint(0, len(game_state.valid_moves)-1)]
 
 
 

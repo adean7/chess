@@ -76,7 +76,7 @@ class Programme:
     move_log_y_padding = int(1.5 * sq_size) + 10
     move_log_line_spacing = 2
     move_log_text_object_height = fonts['move_log_text'].render(
-        'O-O-O', 0, colors['move_log_text']).get_height()
+        'O-O-O', False, colors['move_log_text']).get_height()
     num_recent_moves = 8
 
     screen = p.display.set_mode((width_board + width_sidebar, height_board))
@@ -168,28 +168,23 @@ class Programme:
         if self.piece_held_origin != ():
             row = self.piece_held_origin[0]
             col = self.piece_held_origin[1]
-            highlight = True
         elif self.piece_selected_square != ():
             row = self.piece_selected_square[0]
             col = self.piece_selected_square[1]
-            highlight = True
         else:
-            highlight = False
+            return
 
-        if highlight:
-            if self.game_state.board[row][col][0] == ('w' if
-            self.game_state.white_move else 'b'):
-                surface = p.Surface((self.sq_size, self.sq_size))
-                surface.set_alpha(100)  # transparency value
-                surface.fill(self.colors['sq_selected'])
-                self.screen.blit(surface, (col * self.sq_size,
-                                           row * self.sq_size))
-                surface.fill(self.colors['valid_moves'])
-                for move in self.game_state.valid_moves:
-                    if move.start_row == row and move.start_col == col:
-                        self.screen.blit(surface, (self.sq_size * move.end_col,
-                                                   self.sq_size * move.end_row)
-                                         )
+        if self.game_state.board[row][col][0] == ('w' if self.game_state.white_move else 'b'):
+            surface = p.Surface((self.sq_size, self.sq_size))
+            surface.set_alpha(100)  # transparency value
+            surface.fill(self.colors['sq_selected'])
+            self.screen.blit(surface, (col * self.sq_size,
+                                       row * self.sq_size))
+            surface.fill(self.colors['valid_moves'])
+            for move in self.game_state.valid_moves:
+                if move.start_row == row and move.start_col == col:
+                    self.screen.blit(surface, (self.sq_size * move.end_col,
+                                               self.sq_size * move.end_row))
 
     def highlight_squares_post_move(self):
         if len(self.game_state.move_log) != 0:
@@ -279,7 +274,7 @@ class Programme:
         if self.game_state.white_score > 0:
             object_white = self.fonts['scores'].render(
                 '{:>+d}'.format(self.game_state.white_score),
-                0, self.colors['white_score'])
+                False, self.colors['white_score'])
 
             loc_white = p.Rect(self.width_board, 0, self.width_sidebar,
                                self.height_board).move(
@@ -292,7 +287,7 @@ class Programme:
         elif self.game_state.black_score > 0:
             object_black = self.fonts['scores'].render(
                 '{:>+d}'.format(self.game_state.black_score),
-                0, self.colors['black_score'])
+                False, self.colors['black_score'])
 
             loc_black = p.Rect(self.width_board, 0, self.width_sidebar,
                                self.height_board).move(
@@ -320,10 +315,10 @@ class Programme:
             string = '{:>3d}. {:>7s} {:>7s}'.format(
                 1 + ((move_num + starting_num) // 2),
                 str(recent_moves[move_num]),
-                str(recent_moves[move_num + 1]) \
-                    if move_num + 1 < len(recent_moves) else '')
+                str(recent_moves[move_num + 1])
+                if move_num + 1 < len(recent_moves) else '')
             text_object = self.fonts['move_log_text'].render(
-                string, 0, self.colors['move_log_text'])
+                string, False, self.colors['move_log_text'])
 
             text_location = self.sidebar.move(self.move_log_x_padding, text_y)
             self.screen.blit(text_object, text_location)
@@ -345,10 +340,10 @@ class Programme:
             d = datetime.datetime.utcfromtimestamp(self.game_state.black_time)
             text_black = datetime.datetime.strftime(d, "%M:%S")
 
-        object_white = self.fonts['timers'].render(text_white, 0, self.colors[
+        object_white = self.fonts['timers'].render(text_white, False, self.colors[
             'timers'])
 
-        object_black = self.fonts['timers'].render(text_black, 0, self.colors[
+        object_black = self.fonts['timers'].render(text_black, False, self.colors[
             'timers'])
 
         loc_white = p.Rect(self.width_board, 0, self.width_sidebar,
@@ -365,7 +360,7 @@ class Programme:
         self.screen.blit(object_black, loc_black)
 
     def draw_end_game_text(self, text):
-        text_object = self.fonts['end_game'].render(text, 0, self.colors[
+        text_object = self.fonts['end_game'].render(text, False, self.colors[
             'end_game_text'])
 
         text_location = p.Rect(0, 0, self.width_board, self.height_board).move(
@@ -375,7 +370,7 @@ class Programme:
         self.screen.blit(text_object, text_location)
 
     def draw_result(self, text):
-        text_object = self.fonts['result'].render(text, 0,
+        text_object = self.fonts['result'].render(text, False,
                                                   self.colors['result'])
 
         text_location = p.Rect(self.width_board, 0,

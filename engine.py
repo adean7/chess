@@ -1,7 +1,6 @@
-import copy
-import time
-
 from collections import Counter
+from copy import deepcopy
+from time import time
 
 
 class GameState:
@@ -17,7 +16,7 @@ class GameState:
                       ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
                       ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']]
 
-        self.board_log = [copy.deepcopy(self.board)]
+        self.board_log = [deepcopy(self.board)]
 
         self.pieces_order = {'k': 1, 'q': 2, 'r': 3, 'b': 4, 'n': 5, 'p': 6}
         self.all_board_pieces_counter = Counter(['k', 'q', 'r', 'r',
@@ -126,11 +125,11 @@ class GameState:
         self.last_time_stamp = None
 
     def start_timer(self):
-        self.last_time_stamp = time.time()
+        self.last_time_stamp = time()
 
     def update_timers(self):
         if self.timed_game and self.game_started and not self.game_over:
-            current_time = time.time()
+            current_time = time()
             time_diff = current_time - self.last_time_stamp
 
             if self.white_move:
@@ -223,12 +222,12 @@ class GameState:
 
         self.castling_log.append(self.castling.copy())
 
-        self.board_log.append(copy.deepcopy(self.board))
+        self.board_log.append(deepcopy(self.board))
 
         self.get_pieces_taken()
 
         if len(self.board_log) >= 9 and \
-            self.board_log[-1] == self.board_log[-5] == self.board_log[-9]:
+                self.board_log[-1] == self.board_log[-5] == self.board_log[-9]:
             self.is_three_fold = True
 
         if move.piece_moved[1] == 'p':
@@ -339,7 +338,7 @@ class GameState:
             self.moves_since_capture = self.moves_since_capture_log[-1]
 
             self.board_log.pop()
-            self.board = copy.deepcopy(self.board_log[-1])
+            self.board = deepcopy(self.board_log[-1])
 
             self.get_pieces_taken()
 
@@ -746,10 +745,10 @@ class GameState:
             self.white_has)).elements())
 
         white_pawn_promotions = len(list((Counter(self.white_has) -
-                                self.all_board_pieces_counter).elements()))
+                                          self.all_board_pieces_counter).elements()))
 
         black_pawn_promotions = len(list((Counter(self.black_has) -
-                                self.all_board_pieces_counter).elements()))
+                                          self.all_board_pieces_counter).elements()))
 
         for _ in range(white_pawn_promotions):
             self.black_taken.remove('p')

@@ -1,7 +1,7 @@
 import network
 import client
 
-import stockfish
+#import stockfish
 
 
 
