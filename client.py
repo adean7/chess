@@ -34,8 +34,8 @@ class Programme:
     clock = p.time.Clock()
 
     colors = {'fill': p.Color('white'),
-              'board1': p.Color(255, 204, 255),
-              'board2': p.Color(255, 255, 255),
+              'board1': p.Color(255, 255, 255),
+              'board2': p.Color(255, 204, 255),
               'border': p.Color(50, 50, 50),
               'sq_selected': p.Color('purple'),
               'valid_moves': p.Color('yellow'),
